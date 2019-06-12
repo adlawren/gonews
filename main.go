@@ -1,6 +1,8 @@
 package main
 
 // TODO:
+// - Extract parameters to config file (TOML)
+//   - Including feed list, feed item limit
 // - Make the html nicer
 
 import (
@@ -17,6 +19,17 @@ import (
 var feeds = []string{
 	"https://www.schneier.com/blog/atom.xml",
 	"https://blog.talosintelligence.com/feeds/comments/default",
+	"https://news.ycombinator.com/rss",
+	"https://krebsonsecurity.com/feed/",
+	"https://news.softpedia.com/newsRSS/Security-5.xml",
+	"http://feeds.arstechnica.com/arstechnica/security",
+	"https://www.wired.com/feed/category/security/latest/rss",
+	"https://www.vice.com/en_us/rss/section/tech",
+	"https://www.reddit.com/r/golang.rss",
+	"https://www.reddit.com/r/devops.rss",
+	"https://www.reddit.com/r/netsec.rss",
+	"https://www.reddit.com/r/artc.rss",
+	"https://www.reddit.com/r/crypto.rss",
 	//"https://googleprojectzero.blogspot.com/feeds/posts/default",
 }
 
