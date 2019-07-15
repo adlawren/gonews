@@ -1,84 +1,130 @@
 package main
 
 // TODO:
-// - Extract parameters to config file (TOML)
-//   - Including feed list, feed item limit
-// - Make the html nicer
+// - Add support for a http-param-based filter; i.e. <base url>?date=<something>&...
+//   - Ideally, you support parameters for each field in the item struct..
+// - Add CSS; Bootstrap
 
 import (
-	// "fmt"
+	"fmt"
 	"github.com/mmcdole/gofeed"
 	// "html"
+	"github.com/spf13/viper"
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 	"sort"
 	"time"
 )
 
-var feeds = []string{
-	"https://www.schneier.com/blog/atom.xml",
-	"https://blog.talosintelligence.com/feeds/comments/default",
-	"https://news.ycombinator.com/rss",
-	"https://krebsonsecurity.com/feed/",
-	"https://news.softpedia.com/newsRSS/Security-5.xml",
-	"http://feeds.arstechnica.com/arstechnica/security",
-	"https://www.wired.com/feed/category/security/latest/rss",
-	"https://www.vice.com/en_us/rss/section/tech",
-	"https://www.reddit.com/r/golang.rss",
-	"https://www.reddit.com/r/devops.rss",
-	"https://www.reddit.com/r/netsec.rss",
-	"https://www.reddit.com/r/artc.rss",
-	"https://www.reddit.com/r/crypto.rss",
-	//"https://googleprojectzero.blogspot.com/feeds/posts/default",
+type FeedItem struct {
+	Author      *gofeed.Person
+	Title       string
+	Description string
+	Link        string
+	Published   *time.Time
+	Url         *url.URL
 }
 
-const (
-	feedItemLimit = 5
-)
+func convertToFeedItem(feedUrl string, gfi *gofeed.Item) *FeedItem {
+	feedItemUrl, _ := url.Parse(feedUrl)
+	return &FeedItem{
+		Author:      gfi.Author,
+		Title:       gfi.Title,
+		Description: gfi.Description,
+		Link:        gfi.Link,
+		Published:   gfi.PublishedParsed,
+		Url:         feedItemUrl,
+	}
+}
 
-type ItemSlice []*gofeed.Item
+func convertToFeedItems(feedUrl string, goFeedItems []*gofeed.Item) []*FeedItem {
+	var feedItems []*FeedItem
+	for _, gfi := range goFeedItems {
+		feedItems = append(feedItems, convertToFeedItem(feedUrl, gfi))
+	}
+
+	return feedItems
+}
+
+type FeedItemSlice []*FeedItem
+
+func (fis FeedItemSlice) Len() int {
+	return len(fis)
+}
+
+func (fis FeedItemSlice) Less(i, j int) bool {
+	iTime := fis[i].Published
+	jTime := fis[j].Published
+
+	return iTime.After(*jTime)
+}
+
+func (fis FeedItemSlice) Swap(i, j int) {
+	fis[i], fis[j] = fis[j], fis[i]
+}
 
 type IndexTemplateParams struct {
 	Title    string
-	ItemList ItemSlice
-}
-
-func (is ItemSlice) Len() int {
-	return len(is)
-}
-
-func (is ItemSlice) Less(i, j int) bool {
-	iTime, _ := time.Parse(time.RFC3339, is[i].Published)
-	jTime, _ := time.Parse(time.RFC3339, is[j].Published)
-
-	return iTime.After(jTime)
-}
-
-func (is ItemSlice) Swap(i, j int) {
-	is[i], is[j] = is[j], is[i]
+	ItemList FeedItemSlice
 }
 
 func main() {
-	var allItems []*gofeed.Item
-	var feed *gofeed.Feed
-	fp := gofeed.NewParser()
-	for _, feedUrl := range feeds {
-		feed, _ = fp.ParseURL(feedUrl)
-		allItems = append(
-			allItems, feed.Items[:feedItemLimit]...)
+	viper.SetConfigName("config")
+	viper.AddConfigPath(".")
+	if err := viper.ReadInConfig(); err != nil {
+		fmt.Println("Error: failed to read config file")
+		return
 	}
 
-	var is ItemSlice = allItems
-	sort.Sort(is)
+	var allFeedItems FeedItemSlice
+	fp := gofeed.NewParser()
+
+	feedConfigs := viper.Get("feeds").([]interface{})
+	for _, feedConfig := range feedConfigs {
+		feedConfigMap := feedConfig.(map[string]interface{})
+		feedUrl, exists := feedConfigMap["url"].(string)
+		if !exists {
+			fmt.Println("Error: feed config must contain url")
+			return
+		}
+
+		feedItemLimitInterface, exists := feedConfigMap["item_limit"]
+
+		var feedItemLimit int64
+		if !exists {
+			feedItemLimit = viper.Get("item_limit").(int64)
+		} else {
+			feedItemLimit = feedItemLimitInterface.(int64)
+		}
+
+		if nextFeed, err := fp.ParseURL(feedUrl); err != nil {
+			fmt.Printf("Warning: could not retrieve feed from %v\n", feedUrl)
+		} else {
+			allFeedItems = append(
+				allFeedItems,
+				convertToFeedItems(
+					feedUrl,
+					nextFeed.Items[:feedItemLimit])...)
+
+		}
+	}
+
+	sort.Sort(allFeedItems)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// TODO: do any of the fields need to be html.EscapeString-ed?
-		t, _ := template.ParseFiles("index.html")
-		t.Execute(w, &IndexTemplateParams{
-			Title:    "Thar be Blogs",
-			ItemList: is,
-		})
+		// TODO: parse url params, filter items
+		//fmt.Println(r.URL.Query())
+
+		if t, err := template.ParseFiles("index.html"); err != nil {
+			fmt.Println("Error: failed to parse template")
+		} else {
+			t.Execute(w, &IndexTemplateParams{
+				Title:    viper.GetString("homepage_title"),
+				ItemList: allFeedItems,
+			})
+		}
 	})
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
