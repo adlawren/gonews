@@ -4,6 +4,7 @@ package main
 // - Add support for a http-param-based filter; i.e. <base url>?date=<something>&...
 //   - Ideally, you support parameters for each field in the item struct..
 // - Add CSS; Bootstrap
+// - Test/cover the edge case where there are not enough items in the rss feed to accommodate the item limit
 
 import (
 	"fmt"

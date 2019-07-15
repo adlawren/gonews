@@ -13,7 +13,7 @@ url = "https://googleprojectzero.blogspot.com/feeds/posts/default"
 
 [[feeds]]
 url = "http://export.arxiv.org/rss/cs.CR?version=atom_1.0"
-item_limit = 3
+item_limit = 10
 
 # [[feeds]]
 # url = "https://blog.talosintelligence.com/feeds/posts/default"
@@ -30,12 +30,6 @@ item_limit = 3
 
 # [[feeds]]
 # url = "https://www.wired.com/feed/category/security/latest/rss"
-
-# [[feeds]]
-# url = "https://www.wired.com/feed/category/security/latest/rss"
-
-# [[feeds]]
-# url = "https://www.vice.com/en_us/rss/section/tech"
 
 # [[feeds]]
 # url = "https://www.vice.com/en_us/rss/section/tech"
