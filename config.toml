@@ -3,6 +3,10 @@ homepage_title = "goNews"
 item_limit = 5
 
 [[feeds]]
+url = "https://rss.cbc.ca/lineup/topstories.xml"
+item_limit = 10
+
+[[feeds]]
 url = "https://www.schneier.com/blog/atom.xml"
 
 [[feeds]]
@@ -11,52 +15,11 @@ url = "https://krebsonsecurity.com/feed/"
 [[feeds]]
 url = "https://googleprojectzero.blogspot.com/feeds/posts/default"
 
-[[feeds]]
-url = "http://export.arxiv.org/rss/cs.CR?version=atom_1.0"
-item_limit = 1
-
-[[feeds]]
-url = "http://export.arxiv.org/rss/cs.DS?version=atom_1.0"
-item_limit = 1
-
-[[feeds]]
-url = "http://export.arxiv.org/rss/cs.DM?version=atom_1.0"
-item_limit = 1
-
-[[feeds]]
-url = "http://export.arxiv.org/rss/cs.FL?version=atom_1.0"
-item_limit = 1
-
-[[feeds]]
-url = "http://export.arxiv.org/rss/cs.NI?version=atom_1.0"
-item_limit = 1
-
-[[feeds]]
-url = "http://export.arxiv.org/rss/cs.OS?version=atom_1.0"
-item_limit = 1
-
-[[feeds]]
-url = "http://export.arxiv.org/rss/cs.PL?version=atom_1.0"
-item_limit = 1
-
-[[feeds]]
-url = "http://export.arxiv.org/rss/cs.SE?version=atom_1.0"
-item_limit = 1
-
-# [[feeds]]
-# url = "http://export.arxiv.org/rss/cs.SC?version=atom_1.0"
-# item_limit = 1
-
-# [[feeds]]
-# url = "http://export.arxiv.org/rss/cs.IT?version=atom_1.0"
-# item_limit = 1
-
 # [[feeds]]
 # url = "https://blog.talosintelligence.com/feeds/posts/default"
 
 # [[feeds]]
 # url = "https://news.ycombinator.com/rss"
-# item_limit = 5
 
 # [[feeds]]
 # url = "https://news.softpedia.com/newsRSS/Security-5.xml"
@@ -70,17 +33,10 @@ item_limit = 1
 # [[feeds]]
 # url = "https://www.vice.com/en_us/rss/section/tech"
 
+# Arxiv example
 # [[feeds]]
-# url = "https://www.reddit.com/r/golang.rss"
+# url = "http://export.arxiv.org/rss/cs.CR?version=atom_1.0"
 
-# [[feeds]]
-# url = "https://www.reddit.com/r/netsec.rss"
-
-# [[feeds]]
-# url = "https://www.reddit.com/r/devops.rss"
-
-# [[feeds]]
-# url = "https://www.reddit.com/r/artc.rss"
-
+# Reddit example
 # [[feeds]]
 # url = "https://www.reddit.com/r/crypto.rss"

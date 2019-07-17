@@ -93,11 +93,11 @@ func main() {
 
 		feedItemLimitInterface, exists := feedConfigMap["item_limit"]
 
-		var feedItemLimit int64
+		var feedItemLimit int
 		if !exists {
-			feedItemLimit = viper.Get("item_limit").(int64)
+			feedItemLimit = int(viper.Get("item_limit").(int64))
 		} else {
-			feedItemLimit = feedItemLimitInterface.(int64)
+			feedItemLimit = int(feedItemLimitInterface.(int64))
 		}
 
 		if nextFeed, err := fp.ParseURL(feedUrl); err != nil {
@@ -105,6 +105,11 @@ func main() {
 		} else if len(nextFeed.Items) < 1 {
 			fmt.Printf("Warning: %v feed is empty\n", feedUrl)
 		} else {
+			if len(nextFeed.Items) < feedItemLimit {
+				fmt.Printf("Warning: truncating item_limit; not enough items in %v feed\n", feedUrl)
+				feedItemLimit = len(nextFeed.Items)
+			}
+
 			allFeedItems = append(
 				allFeedItems,
 				convertToFeedItems(
