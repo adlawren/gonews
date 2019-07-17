@@ -102,13 +102,14 @@ func main() {
 
 		if nextFeed, err := fp.ParseURL(feedUrl); err != nil {
 			fmt.Printf("Warning: could not retrieve feed from %v\n", feedUrl)
+		} else if len(nextFeed.Items) < 1 {
+			fmt.Printf("Warning: %v feed is empty\n", feedUrl)
 		} else {
 			allFeedItems = append(
 				allFeedItems,
 				convertToFeedItems(
 					feedUrl,
 					nextFeed.Items[:feedItemLimit])...)
-
 		}
 	}
 

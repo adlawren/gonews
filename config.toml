@@ -13,7 +13,43 @@ url = "https://googleprojectzero.blogspot.com/feeds/posts/default"
 
 [[feeds]]
 url = "http://export.arxiv.org/rss/cs.CR?version=atom_1.0"
-item_limit = 10
+item_limit = 1
+
+[[feeds]]
+url = "http://export.arxiv.org/rss/cs.DS?version=atom_1.0"
+item_limit = 1
+
+[[feeds]]
+url = "http://export.arxiv.org/rss/cs.DM?version=atom_1.0"
+item_limit = 1
+
+[[feeds]]
+url = "http://export.arxiv.org/rss/cs.FL?version=atom_1.0"
+item_limit = 1
+
+[[feeds]]
+url = "http://export.arxiv.org/rss/cs.NI?version=atom_1.0"
+item_limit = 1
+
+[[feeds]]
+url = "http://export.arxiv.org/rss/cs.OS?version=atom_1.0"
+item_limit = 1
+
+[[feeds]]
+url = "http://export.arxiv.org/rss/cs.PL?version=atom_1.0"
+item_limit = 1
+
+[[feeds]]
+url = "http://export.arxiv.org/rss/cs.SE?version=atom_1.0"
+item_limit = 1
+
+# [[feeds]]
+# url = "http://export.arxiv.org/rss/cs.SC?version=atom_1.0"
+# item_limit = 1
+
+# [[feeds]]
+# url = "http://export.arxiv.org/rss/cs.IT?version=atom_1.0"
+# item_limit = 1
 
 # [[feeds]]
 # url = "https://blog.talosintelligence.com/feeds/posts/default"
