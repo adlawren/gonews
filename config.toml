@@ -1,10 +1,12 @@
 homepage_title = "goNews"
 
-item_limit = 5
+db_name = "db"
+
+item_limit = 3
 
 [[feeds]]
 url = "https://rss.cbc.ca/lineup/topstories.xml"
-item_limit = 10
+item_limit = 5
 
 [[feeds]]
 url = "https://www.schneier.com/blog/atom.xml"
@@ -12,8 +14,10 @@ url = "https://www.schneier.com/blog/atom.xml"
 [[feeds]]
 url = "https://krebsonsecurity.com/feed/"
 
-[[feeds]]
-url = "https://googleprojectzero.blogspot.com/feeds/posts/default"
+# [[feeds]]
+# url = "https://googleprojectzero.blogspot.com/feeds/posts/default"
+
+
 
 # [[feeds]]
 # url = "https://blog.talosintelligence.com/feeds/posts/default"

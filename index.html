@@ -1,3 +1,3 @@
 <h1>{{.Title}}</h1>
 
-{{range .ItemList}}<h3>{{.Title}}</h3><h4>{{.Author.Name}}, {{.Published.Month}} {{.Published.Day}} {{.Published.Year}}, <a href="{{.Link}}">{{.Url.Host}}</a></h4>{{.Description}}<br/>{{end}}
+{{range .FeedItems}}<h3>{{.Title}}</h3><h4>{{.AuthorName}}, {{.Published.Month}} {{.Published.Day}} {{.Published.Year}}, <a href="{{.Link}}">{{.Url}}</a></h4>{{.Description}}<br/>{{end}}
