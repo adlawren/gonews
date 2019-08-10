@@ -1,7 +1,6 @@
 package main
 
 // TODO:
-// - Don't insert duplicate items
 // - Update config
 //   - Add params to limit the number of feed items retained in the database
 //     - And/or 'max retention time'
@@ -27,6 +26,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -39,6 +39,7 @@ type FeedItem struct {
 	Url         string
 	AuthorName  string
 	AuthorEmail string
+	Hide        bool
 }
 
 func convertToFeedItem(feedUrl string, goFeedItem *gofeed.Item) *FeedItem {
@@ -99,28 +100,11 @@ func loadConfig(configPath, configName string) error {
 func processGoFeedItem(db *gorm.DB, goFeedItem *gofeed.Item, feedUrl string, feedConfigMap map[string]interface{}) {
 	fi := convertToFeedItem(feedUrl, goFeedItem)
 
-	db.Create(fi)
+	var existingFeedItem FeedItem
+	db.FirstOrCreate(&existingFeedItem, fi)
 }
 
-func main() {
-	if err := loadConfig(".", "config"); err != nil {
-		log.Fatal(err)
-	}
-
-	// TODO: add a config param to enable logging
-	// db.LogMode(true)
-
-	db, err := gorm.Open("sqlite3", fmt.Sprintf("%v.sqlite3", viper.GetString("db_name")))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer db.Close()
-
-	if err := migrateDatabase(db); err != nil {
-		log.Fatal(err)
-	}
-
+func fetchFeeds(db *gorm.DB) {
 	fp := gofeed.NewParser()
 
 	feedConfigs := viper.Get("feeds").([]interface{})
@@ -156,25 +140,83 @@ func main() {
 			}
 		}
 	}
+}
+
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO: parse url params, filter items
+	//fmt.Println(r.URL.Query())
+
+	// TODO: Pass db as a param? Don't do this?
+	// - Could use a closure..
+	// - Or a global variable
+	db, err := gorm.Open("sqlite3", fmt.Sprintf("%v.sqlite3", viper.GetString("db_name")))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer db.Close()
 
 	dbOrderedByPublished := db.Order("published DESC", true)
 
 	var feedItems []*FeedItem
 	dbOrderedByPublished.Find(&feedItems, &FeedItem{})
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// TODO: parse url params, filter items
-		//fmt.Println(r.URL.Query())
+	if t, err := template.ParseFiles("index.html"); err != nil {
+		log.Fatal(err)
+	} else {
+		t.Execute(w, &IndexTemplateParams{
+			Title:     viper.GetString("homepage_title"),
+			FeedItems: feedItems,
+		})
+	}
+}
 
-		if t, err := template.ParseFiles("index.html"); err != nil {
-			log.Fatal(err)
-		} else {
-			t.Execute(w, &IndexTemplateParams{
-				Title:     viper.GetString("homepage_title"),
-				FeedItems: feedItems,
-			})
-		}
-	})
+func hideHandler(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+
+	db, err := gorm.Open("sqlite3", fmt.Sprintf("%v.sqlite3", viper.GetString("db_name")))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer db.Close()
+
+	if id, err := strconv.ParseUint(r.PostFormValue("ID"), 10, 64); err == nil {
+		var feedItem FeedItem
+		feedItem.ID = uint(id)
+		db.Model(&feedItem).Update("Hide", true)
+	}
+
+	http.Redirect(w, r, "/", 303)
+}
+
+func main() {
+	if err := loadConfig(".", "config"); err != nil {
+		log.Fatal(err)
+	}
+
+	// TODO: add a config param to enable logging
+	// db.LogMode(true)
+
+	db, err := gorm.Open("sqlite3", fmt.Sprintf("%v.sqlite3", viper.GetString("db_name")))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer db.Close()
+
+	if err := migrateDatabase(db); err != nil {
+		log.Fatal(err)
+	}
+
+	//fetchFeeds(db) // TODO: uncomment
+
+	// TODO: rm - testing
+	var tmpFeedItem FeedItem
+	db.AutoMigrate(&tmpFeedItem)
+
+	http.HandleFunc("/", indexHandler)
+	http.HandleFunc("/hide", hideHandler)
 
 	log.Fatal(http.ListenAndServe("localhost:8080", nil))
 }
