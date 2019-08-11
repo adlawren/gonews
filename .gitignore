@@ -12,3 +12,6 @@
 *.out
 
 *.sqlite3
+
+# Ignore binary
+gonews

@@ -2,6 +2,7 @@ package main
 
 // TODO:
 // - Update config
+//   - Item limit per page
 //   - Add params to limit the number of feed items retained in the database
 //     - And/or 'max retention time'
 //   - 'feed retrieval frequency'
@@ -161,7 +162,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	var feedItems []*FeedItem
 	dbOrderedByPublished.Find(&feedItems, &FeedItem{})
 
-	if t, err := template.ParseFiles("index.html"); err != nil {
+	if t, err := template.ParseFiles("index.html.tmpl"); err != nil {
 		log.Fatal(err)
 	} else {
 		t.Execute(w, &IndexTemplateParams{
@@ -218,5 +219,5 @@ func main() {
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/hide", hideHandler)
 
-	log.Fatal(http.ListenAndServe("localhost:8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
