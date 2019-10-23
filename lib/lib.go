@@ -146,6 +146,7 @@ func ProcessGoFeedItem(db DB, goFeedItem *gofeed.Item, feedUrl string, feedConfi
 	db.FirstOrCreate(&existingFeedItem, fi)
 }
 
+// TODO: revisit the commented code; may re-add the feature
 func (dff *DefaultFeedFetcher) FetchFeeds(appConfig AppConfig, feedParser FeedParser, db DB) error {
 	feedConfigs := appConfig.Get("feeds").([]interface{})
 	for _, feedConfig := range feedConfigs {
@@ -189,18 +190,9 @@ func (dff *DefaultFeedFetcher) FetchFeeds(appConfig AppConfig, feedParser FeedPa
 }
 
 func FetchFeedsAfterDelay(appConfig AppConfig, fs FS, pt PersistentTimestamp, ff FeedFetcher, fp FeedParser, db DB) error {
-	// - Read last-updated time from file, store in variable
-	//   - If file doesn't exist, create file from current time
-	// - Defer operation: write timestamp from variable to file
-	// - While true:
-	//   - If time elapsed greater than 'refresh frequency' from config file
-	//     - Fetch feeds, update db
-	//     - Update timestamp variable
-	//   - Else: sleep for 'sleep duration' from config file
 	if lastUpdatedTime, err := pt.Parse(fs); err != nil {
 		return err
 	} else {
-		//feedFetchTime := lastUpdatedTime.Add(time.ParseDuration(viper.GetString("feed_fetch_period")))
 		if d, err := time.ParseDuration(appConfig.GetString("feed_fetch_period")); err != nil {
 			return err
 		} else {
@@ -219,7 +211,6 @@ func FetchFeedsAfterDelay(appConfig AppConfig, fs FS, pt PersistentTimestamp, ff
 
 						return nil
 					} else {
-						//time.Sleep(viper.GetInt("feed_fetch_delay") * time.Millisecond)
 						time.Sleep(delay)
 					}
 				}

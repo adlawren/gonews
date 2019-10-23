@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	//"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/mmcdole/gofeed"
 	"gonews/lib"
@@ -244,8 +243,7 @@ func TestTimestampFile_UpdateShouldReturnNilWhenTimeUpdated(t *testing.T) {
 	}
 }
 
-//// TODO:
-// Don't use 'mockXYZ' functions? Mock the modules directly using Gomock?
+// TODO: don't use 'mockXYZ' functions? Mock the modules directly using Gomock?
 
 func mockFeedsConfig() []interface{} {
 	var feeds []interface{}
@@ -258,10 +256,6 @@ func mockFeedsConfig() []interface{} {
 	testFeed1["url"] = "TestUrl"
 
 	feeds = append(feeds, testFeed1)
-
-	// var testFeed2 map[string]interface{}
-	// testFeed2["url"] = "testFeed2_url"
-	// feeds = append(feeds, testFeed2)
 
 	return feeds
 }
@@ -408,13 +402,10 @@ func TestFetchFeedsAfterDelayShouldFetchFeedsWhenFetchPeriodElapsed(t *testing.T
 	mockFeedParser := mock_lib.NewMockFeedParser(ctrl)
 	mockDB := mock_lib.NewMockDB(ctrl)
 
-	//var nilTime time.Time
 	currentTime := time.Now()
 
-	//mockTimestamp.EXPECT().Parse(gomock.Eq(mockFS)).Return(&nilTime, nil)
 	mockTimestamp.EXPECT().Parse(gomock.Eq(mockFS)).Return(&currentTime, nil)
 	mockTimestamp.EXPECT().Update(gomock.Eq(mockFS), gomock.Any()).DoAndReturn(func(fs lib.FS, newTime *time.Time) lib.DB {
-		//if *newTime == nilTime {
 		if *newTime == currentTime {
 			t.Errorf("new time is %v, expected to be unequal to old time\n", newTime)
 			t.Fail()
