@@ -179,7 +179,7 @@ func fetchFeedsMonitor() {
 
 	for {
 		if err := lib.FetchFeedsAfterDelay(appConfig(), osfs, timestampFile, feedFetcher, feedParser, appDB()); err != nil {
-			log.Fatal(err)
+			fmt.Printf("Failed to fetch feeds: %v\n", err)
 		}
 	}
 }
@@ -227,13 +227,6 @@ func hideHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", 303)
 }
 
-func ProcessGoFeedItem(db lib.DB, goFeedItem *gofeed.Item, feedUrl string) {
-	fi := lib.ConvertToFeedItem(feedUrl, goFeedItem)
-
-	var existingFeedItem lib.FeedItem
-	db.FirstOrCreate(&existingFeedItem, fi)
-}
-
 func main() {
 	if err := loadConfig(appConfig(), ".", "config"); err != nil {
 		log.Fatal(err)
@@ -248,10 +241,6 @@ func main() {
 	if err := migrateGormDB(db.(*gormDB)); err != nil {
 		log.Fatal(err)
 	}
-
-	// TODO: rm - testing
-	var tmpFeedItem lib.FeedItem
-	db.(*gormDB).db.AutoMigrate(&tmpFeedItem)
 
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/hide", hideHandler)
