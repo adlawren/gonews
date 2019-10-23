@@ -1,17 +1,7 @@
 package main
 
 // TODO:
-// - Replace log.Fatal calls
-// - Write tests, refactor code
-//   - Create interface for DB
-//   - Create interface for viper
 // - Rename lib package, extract code to separate packages
-// - Install dlv in the Docker container
-// - Implement the feed retrieval function as a goroutine; run it without blocking the main app
-// - Add database entries to track feed retrieval times
-//   - Or just a marker file, or something
-// - Update config
-//   - 'feed retrieval frequency'
 // - Create/use hidden data dir
 // - Update config
 //   - Item limit per page
