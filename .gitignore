@@ -11,7 +11,14 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+# Ignore db
 *.sqlite3
 
 # Ignore binary
 gonews
+
+# Ignore db last-updated timestamp
+DB_LAST_UPDATED
+
+# Ignore generated mocks
+mock_lib

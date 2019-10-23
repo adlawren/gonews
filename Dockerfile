@@ -6,8 +6,8 @@ COPY . .
 
 EXPOSE 8080
 
-# Disable terminal bell # TODO: test? rm?
-#RUN rmmod pcspkr
+# Disable terminal bell
+RUN sed -i 's/# set bell-style none/set bell-style none/' /etc/inputrc
 
 RUN go clean
 RUN go get -d -v ./...
