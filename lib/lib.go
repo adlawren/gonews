@@ -70,8 +70,6 @@ func (tf *TimestampFile) Update(fs FS, t *time.Time) error {
 		} else {
 			if err := f.Close(); err != nil {
 				return err
-			} else {
-				return nil
 			}
 		}
 
@@ -96,7 +94,7 @@ type DB interface {
 	Update(...interface{}) DB
 }
 
-type FeedParser interface {
+type GofeedURLParser interface {
 	ParseURL(string) (*gofeed.Feed, error)
 }
 
@@ -113,13 +111,13 @@ type FeedItem struct {
 }
 
 type FeedFetcher interface {
-	FetchFeeds(AppConfig, FeedParser, DB) error
+	FetchFeeds(AppConfig, GofeedURLParser, DB) error
 }
 
 // TODO: rename?
 type DefaultFeedFetcher struct{}
 
-func ConvertToFeedItem(feedUrl string, goFeedItem *gofeed.Item) *FeedItem {
+func ConvertToFeedItem(goFeedItem *gofeed.Item, feedUrl string) *FeedItem {
 	var goFeedAuthorName string
 	var goFeedAuthorEmail string
 	if goFeedItem.Author != nil {
@@ -138,16 +136,14 @@ func ConvertToFeedItem(feedUrl string, goFeedItem *gofeed.Item) *FeedItem {
 	}
 }
 
-// TODO: see if there's a way to avoid the redundancy - the feedUrl is in the feedConfigMap too
-func ProcessGoFeedItem(db DB, goFeedItem *gofeed.Item, feedUrl string, feedConfigMap map[string]interface{}) {
-	fi := ConvertToFeedItem(feedUrl, goFeedItem)
+func ProcessGoFeedItem(db DB, goFeedItem *gofeed.Item, feedUrl string) {
+	fi := ConvertToFeedItem(goFeedItem, feedUrl)
 
 	var existingFeedItem FeedItem
 	db.FirstOrCreate(&existingFeedItem, fi)
 }
 
-// TODO: revisit the commented code; may re-add the feature
-func (dff *DefaultFeedFetcher) FetchFeeds(appConfig AppConfig, feedParser FeedParser, db DB) error {
+func (dff *DefaultFeedFetcher) FetchFeeds(appConfig AppConfig, feedParser GofeedURLParser, db DB) error {
 	feedConfigs := appConfig.Get("feeds").([]interface{})
 	for _, feedConfig := range feedConfigs {
 		feedConfigMap := feedConfig.(map[string]interface{})
@@ -156,31 +152,13 @@ func (dff *DefaultFeedFetcher) FetchFeeds(appConfig AppConfig, feedParser FeedPa
 			return errors.New("Feed config must contain url")
 		}
 
-		//feedItemLimitInterface, exists := feedConfigMap["item_limit"]
-
-		// var feedItemLimit int
-		// if !exists {
-		// 	feedItemLimit = int(appConfig.Get("item_limit").(int64))
-		// } else {
-		// 	feedItemLimit = int(feedItemLimitInterface.(int64))
-		// }
-
 		if nextFeed, err := feedParser.ParseURL(feedUrl); err != nil {
 			fmt.Printf("Warning: could not retrieve feed from %v\n", feedUrl)
 		} else if len(nextFeed.Items) < 1 {
 			fmt.Printf("Warning: %v feed is empty\n", feedUrl)
 		} else {
-			// if len(nextFeed.Items) < feedItemLimit {
-			// 	fmt.Printf("Warning: truncating item_limit; not enough items in %v feed\n", feedUrl)
-			// 	feedItemLimit = len(nextFeed.Items)
-			// }
-
-			// for _, goFeedItem := range nextFeed.Items[:feedItemLimit] {
-			// 	ProcessGoFeedItem(db, goFeedItem, feedUrl, feedConfigMap)
-			// }
-
 			for _, goFeedItem := range nextFeed.Items {
-				ProcessGoFeedItem(db, goFeedItem, feedUrl, feedConfigMap)
+				ProcessGoFeedItem(db, goFeedItem, feedUrl)
 			}
 
 		}
@@ -189,7 +167,7 @@ func (dff *DefaultFeedFetcher) FetchFeeds(appConfig AppConfig, feedParser FeedPa
 	return nil
 }
 
-func FetchFeedsAfterDelay(appConfig AppConfig, fs FS, pt PersistentTimestamp, ff FeedFetcher, fp FeedParser, db DB) error {
+func FetchFeedsAfterDelay(appConfig AppConfig, fs FS, pt PersistentTimestamp, ff FeedFetcher, fp GofeedURLParser, db DB) error {
 	if lastUpdatedTime, err := pt.Parse(fs); err != nil {
 		return err
 	} else {

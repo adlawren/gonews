@@ -249,10 +249,6 @@ func mockFeedsConfig() []interface{} {
 	var feeds []interface{}
 
 	testFeed1 := make(map[string]interface{})
-
-	var itemLimit int64 = 5
-	testFeed1["item_limit"] = itemLimit
-
 	testFeed1["url"] = "TestUrl"
 
 	feeds = append(feeds, testFeed1)
@@ -297,7 +293,7 @@ func TestFetchFeeds_ShouldCreateFeedItems(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockAppConfig := mock_lib.NewMockAppConfig(ctrl)
-	mockFeedParser := mock_lib.NewMockFeedParser(ctrl)
+	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
 	mockDB := mock_lib.NewMockDB(ctrl)
 
 	feedUrl := "TestUrl"
@@ -306,7 +302,7 @@ func TestFetchFeeds_ShouldCreateFeedItems(t *testing.T) {
 	feedItem := mockFeedItem()
 
 	mockAppConfig.EXPECT().Get(gomock.Eq("feeds")).Return(feedsConfig)
-	mockFeedParser.EXPECT().ParseURL(gomock.Eq(feedUrl)).Return(feed, nil)
+	mockGofeedURLParser.EXPECT().ParseURL(gomock.Eq(feedUrl)).Return(feed, nil)
 
 	mockDB.EXPECT().FirstOrCreate(gomock.Any(), gomock.Any()).DoAndReturn(func(out interface{}, where ...interface{}) lib.DB {
 		newFeedItem := where[0].(*lib.FeedItem)
@@ -319,7 +315,7 @@ func TestFetchFeeds_ShouldCreateFeedItems(t *testing.T) {
 	})
 
 	testFeedFetcher := &lib.DefaultFeedFetcher{}
-	if err := testFeedFetcher.FetchFeeds(mockAppConfig, mockFeedParser, mockDB); err != nil {
+	if err := testFeedFetcher.FetchFeeds(mockAppConfig, mockGofeedURLParser, mockDB); err != nil {
 		t.Errorf("FetchFeeds error is %v; expected %v\n", err, nil)
 		t.Fail()
 	}
@@ -330,7 +326,7 @@ func TestFetchFeeds_ShouldReturnErrorWhenFeedUrlMissing(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockAppConfig := mock_lib.NewMockAppConfig(ctrl)
-	mockFeedParser := mock_lib.NewMockFeedParser(ctrl)
+	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
 	mockDB := mock_lib.NewMockDB(ctrl)
 
 	feedsConfig := mockFeedsConfig()
@@ -339,7 +335,7 @@ func TestFetchFeeds_ShouldReturnErrorWhenFeedUrlMissing(t *testing.T) {
 	mockAppConfig.EXPECT().Get(gomock.Eq("feeds")).Return(feedsConfig)
 
 	testFeedFetcher := &lib.DefaultFeedFetcher{}
-	if err := testFeedFetcher.FetchFeeds(mockAppConfig, mockFeedParser, mockDB); err == nil {
+	if err := testFeedFetcher.FetchFeeds(mockAppConfig, mockGofeedURLParser, mockDB); err == nil {
 		t.Errorf("FetchFeeds error is nil; expected an error\n")
 		t.Fail()
 	}
@@ -350,18 +346,18 @@ func TestFetchFeeds_ShouldNotCreateFeedItemsWhenUrlUnparsed(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockAppConfig := mock_lib.NewMockAppConfig(ctrl)
-	mockFeedParser := mock_lib.NewMockFeedParser(ctrl)
+	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
 	mockDB := mock_lib.NewMockDB(ctrl)
 
 	feedUrl := "TestUrl"
 	feedsConfig := mockFeedsConfig()
 
 	mockAppConfig.EXPECT().Get(gomock.Eq("feeds")).Return(feedsConfig)
-	mockFeedParser.EXPECT().ParseURL(gomock.Eq(feedUrl)).Return(nil, errors.New(""))
+	mockGofeedURLParser.EXPECT().ParseURL(gomock.Eq(feedUrl)).Return(nil, errors.New(""))
 	mockDB.EXPECT().FirstOrCreate(gomock.Any(), gomock.Any()).Times(0)
 
 	testFeedFetcher := &lib.DefaultFeedFetcher{}
-	if err := testFeedFetcher.FetchFeeds(mockAppConfig, mockFeedParser, mockDB); err != nil {
+	if err := testFeedFetcher.FetchFeeds(mockAppConfig, mockGofeedURLParser, mockDB); err != nil {
 		t.Errorf("FetchFeeds error is %v; expected %v\n", err, nil)
 		t.Fail()
 	}
@@ -372,7 +368,7 @@ func TestFetchFeeds_ShouldNotCreateFeedItemsWhenFeedIsEmpty(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockAppConfig := mock_lib.NewMockAppConfig(ctrl)
-	mockFeedParser := mock_lib.NewMockFeedParser(ctrl)
+	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
 	mockDB := mock_lib.NewMockDB(ctrl)
 
 	feedUrl := "TestUrl"
@@ -381,11 +377,11 @@ func TestFetchFeeds_ShouldNotCreateFeedItemsWhenFeedIsEmpty(t *testing.T) {
 	feed.Items = []*gofeed.Item{}
 
 	mockAppConfig.EXPECT().Get(gomock.Eq("feeds")).Return(feedsConfig)
-	mockFeedParser.EXPECT().ParseURL(gomock.Eq(feedUrl)).Return(feed, nil)
+	mockGofeedURLParser.EXPECT().ParseURL(gomock.Eq(feedUrl)).Return(feed, nil)
 	mockDB.EXPECT().FirstOrCreate(gomock.Any(), gomock.Any()).Times(0)
 
 	testFeedFetcher := &lib.DefaultFeedFetcher{}
-	if err := testFeedFetcher.FetchFeeds(mockAppConfig, mockFeedParser, mockDB); err != nil {
+	if err := testFeedFetcher.FetchFeeds(mockAppConfig, mockGofeedURLParser, mockDB); err != nil {
 		t.Errorf("FetchFeeds error is %v; expected %v\n", err, nil)
 		t.Fail()
 	}
@@ -399,15 +395,15 @@ func TestFetchFeedsAfterDelayShouldFetchFeedsWhenFetchPeriodElapsed(t *testing.T
 	mockFS := mock_lib.NewMockFS(ctrl)
 	mockTimestamp := mock_lib.NewMockPersistentTimestamp(ctrl)
 	mockFeedFetcher := mock_lib.NewMockFeedFetcher(ctrl)
-	mockFeedParser := mock_lib.NewMockFeedParser(ctrl)
+	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
 	mockDB := mock_lib.NewMockDB(ctrl)
 
 	currentTime := time.Now()
 
 	mockTimestamp.EXPECT().Parse(gomock.Eq(mockFS)).Return(&currentTime, nil)
 	mockTimestamp.EXPECT().Update(gomock.Eq(mockFS), gomock.Any()).DoAndReturn(func(fs lib.FS, newTime *time.Time) lib.DB {
-		if *newTime == currentTime {
-			t.Errorf("new time is %v, expected to be unequal to old time\n", newTime)
+		if !newTime.After(currentTime) {
+			t.Errorf("new time is %v, expected to be after %v\n", newTime, currentTime)
 			t.Fail()
 		}
 
@@ -416,9 +412,9 @@ func TestFetchFeedsAfterDelayShouldFetchFeedsWhenFetchPeriodElapsed(t *testing.T
 
 	mockAppConfig.EXPECT().GetString(gomock.Eq("feed_fetch_period")).Return("5s")
 	mockAppConfig.EXPECT().GetString(gomock.Eq("feed_fetch_delay")).Return("1s")
-	mockFeedFetcher.EXPECT().FetchFeeds(gomock.Eq(mockAppConfig), gomock.Eq(mockFeedParser), gomock.Eq(mockDB)).Return(nil)
+	mockFeedFetcher.EXPECT().FetchFeeds(gomock.Eq(mockAppConfig), gomock.Eq(mockGofeedURLParser), gomock.Eq(mockDB)).Return(nil)
 
-	if err := lib.FetchFeedsAfterDelay(mockAppConfig, mockFS, mockTimestamp, mockFeedFetcher, mockFeedParser, mockDB); err != nil {
+	if err := lib.FetchFeedsAfterDelay(mockAppConfig, mockFS, mockTimestamp, mockFeedFetcher, mockGofeedURLParser, mockDB); err != nil {
 		t.Errorf("FetchFeeds error is %v; expected %v\n", err, nil)
 		t.Fail()
 	}
@@ -432,13 +428,13 @@ func TestFetchFeedsAfterDelayShouldReturnErrorWhenTimestampUnparsed(t *testing.T
 	mockFS := mock_lib.NewMockFS(ctrl)
 	mockTimestamp := mock_lib.NewMockPersistentTimestamp(ctrl)
 	mockFeedFetcher := mock_lib.NewMockFeedFetcher(ctrl)
-	mockFeedParser := mock_lib.NewMockFeedParser(ctrl)
+	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
 	mockDB := mock_lib.NewMockDB(ctrl)
 
 	expectedError := errors.New("")
 	mockTimestamp.EXPECT().Parse(gomock.Eq(mockFS)).Return(nil, expectedError)
 
-	if err := lib.FetchFeedsAfterDelay(mockAppConfig, mockFS, mockTimestamp, mockFeedFetcher, mockFeedParser, mockDB); err != expectedError {
+	if err := lib.FetchFeedsAfterDelay(mockAppConfig, mockFS, mockTimestamp, mockFeedFetcher, mockGofeedURLParser, mockDB); err != expectedError {
 		t.Errorf("FetchFeeds error is %v; expected %v\n", err, expectedError)
 		t.Fail()
 	}
@@ -452,7 +448,7 @@ func TestFetchFeedsAfterDelayShouldReturnErrorWhenFetchPeriodUnparsed(t *testing
 	mockFS := mock_lib.NewMockFS(ctrl)
 	mockTimestamp := mock_lib.NewMockPersistentTimestamp(ctrl)
 	mockFeedFetcher := mock_lib.NewMockFeedFetcher(ctrl)
-	mockFeedParser := mock_lib.NewMockFeedParser(ctrl)
+	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
 	mockDB := mock_lib.NewMockDB(ctrl)
 
 	var nilTime time.Time
@@ -460,7 +456,7 @@ func TestFetchFeedsAfterDelayShouldReturnErrorWhenFetchPeriodUnparsed(t *testing
 	mockTimestamp.EXPECT().Parse(gomock.Eq(mockFS)).Return(&nilTime, nil)
 	mockAppConfig.EXPECT().GetString(gomock.Eq("feed_fetch_period")).Return("invalid-string")
 
-	if err := lib.FetchFeedsAfterDelay(mockAppConfig, mockFS, mockTimestamp, mockFeedFetcher, mockFeedParser, mockDB); err == nil {
+	if err := lib.FetchFeedsAfterDelay(mockAppConfig, mockFS, mockTimestamp, mockFeedFetcher, mockGofeedURLParser, mockDB); err == nil {
 		t.Errorf("FetchFeeds returned %v; expected error\n", err)
 		t.Fail()
 	}
@@ -474,7 +470,7 @@ func TestFetchFeedsAfterDelayShouldReturnErrorWhenFetchDelayUnparsed(t *testing.
 	mockFS := mock_lib.NewMockFS(ctrl)
 	mockTimestamp := mock_lib.NewMockPersistentTimestamp(ctrl)
 	mockFeedFetcher := mock_lib.NewMockFeedFetcher(ctrl)
-	mockFeedParser := mock_lib.NewMockFeedParser(ctrl)
+	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
 	mockDB := mock_lib.NewMockDB(ctrl)
 
 	var nilTime time.Time
@@ -483,7 +479,7 @@ func TestFetchFeedsAfterDelayShouldReturnErrorWhenFetchDelayUnparsed(t *testing.
 	mockAppConfig.EXPECT().GetString(gomock.Eq("feed_fetch_period")).Return("1s")
 	mockAppConfig.EXPECT().GetString(gomock.Eq("feed_fetch_delay")).Return("invalid-string")
 
-	if err := lib.FetchFeedsAfterDelay(mockAppConfig, mockFS, mockTimestamp, mockFeedFetcher, mockFeedParser, mockDB); err == nil {
+	if err := lib.FetchFeedsAfterDelay(mockAppConfig, mockFS, mockTimestamp, mockFeedFetcher, mockGofeedURLParser, mockDB); err == nil {
 		t.Errorf("FetchFeeds returned %v; expected error\n", err)
 		t.Fail()
 	}
@@ -497,7 +493,7 @@ func TestFetchFeedsAfterDelayShouldReturnErrorWhenFeedsUnfetched(t *testing.T) {
 	mockFS := mock_lib.NewMockFS(ctrl)
 	mockTimestamp := mock_lib.NewMockPersistentTimestamp(ctrl)
 	mockFeedFetcher := mock_lib.NewMockFeedFetcher(ctrl)
-	mockFeedParser := mock_lib.NewMockFeedParser(ctrl)
+	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
 	mockDB := mock_lib.NewMockDB(ctrl)
 
 	var nilTime time.Time
@@ -507,9 +503,9 @@ func TestFetchFeedsAfterDelayShouldReturnErrorWhenFeedsUnfetched(t *testing.T) {
 	mockAppConfig.EXPECT().GetString(gomock.Eq("feed_fetch_delay")).Return("1s")
 
 	expectedError := errors.New("")
-	mockFeedFetcher.EXPECT().FetchFeeds(gomock.Eq(mockAppConfig), gomock.Eq(mockFeedParser), gomock.Eq(mockDB)).Return(expectedError)
+	mockFeedFetcher.EXPECT().FetchFeeds(gomock.Eq(mockAppConfig), gomock.Eq(mockGofeedURLParser), gomock.Eq(mockDB)).Return(expectedError)
 
-	if err := lib.FetchFeedsAfterDelay(mockAppConfig, mockFS, mockTimestamp, mockFeedFetcher, mockFeedParser, mockDB); err != expectedError {
+	if err := lib.FetchFeedsAfterDelay(mockAppConfig, mockFS, mockTimestamp, mockFeedFetcher, mockGofeedURLParser, mockDB); err != expectedError {
 		t.Errorf("FetchFeeds error is %v; expected %v\n", err, expectedError)
 		t.Fail()
 	}

@@ -2,18 +2,11 @@ homepage_title = "goNews"
 
 db_name = "db"
 
-# item_limit = 3  # TODO: replace w/
-# page_item_limit = 10
-
-# 12 hrs * 60 min * 60 = 43200 sec
-feed_fetch_period = "12h" #43200
-
-# 60 min * 60 = 3600 sec
-feed_fetch_delay = "60m" #3600
+feed_fetch_period = "12h"
+feed_fetch_delay = "60m"
 
 [[feeds]]
 url = "https://rss.cbc.ca/lineup/topstories.xml"
-# item_limit = 5
 
 [[feeds]]
 url = "https://www.schneier.com/blog/atom.xml"

@@ -141,15 +141,15 @@ func (gdb *gormDB) Update(attrs ...interface{}) lib.DB {
 	return &gormDB{db: gdb.db.Update(attrs...)}
 }
 
-type gofeedFeedParser struct {
+type gofeedURLParser struct {
 	Parser *gofeed.Parser
 }
 
-func (gfp *gofeedFeedParser) ParseURL(url string) (*gofeed.Feed, error) {
+func (gfp *gofeedURLParser) ParseURL(url string) (*gofeed.Feed, error) {
 	return gfp.Parser.ParseURL(url)
 }
 
-// TODO: Use a singleton instead?
+// TODO: Use a singleton instead? How to manage .Close() call.. just put it in main()?
 func appDB() lib.DB {
 	db, err := gorm.Open("sqlite3", fmt.Sprintf("%v.sqlite3", appConfig().GetString("db_name")))
 	if err != nil {
@@ -164,7 +164,7 @@ func fetchFeedsMonitor() {
 	osfs := &osFS{}
 	timestampFile := &lib.TimestampFile{Path: TimestampFilePath}
 	feedFetcher := &lib.DefaultFeedFetcher{}
-	feedParser := &gofeedFeedParser{Parser: gofeed.NewParser()}
+	feedParser := &gofeedURLParser{Parser: gofeed.NewParser()}
 
 	for {
 		if err := lib.FetchFeedsAfterDelay(appConfig(), osfs, timestampFile, feedFetcher, feedParser, appDB()); err != nil {
