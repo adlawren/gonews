@@ -1,7 +1,10 @@
 package main
 
 // TODO:
+// - Add support for labels/groups in the config file
+//   - And support for use of these in query parameters; filter output accordingly
 // - Rename lib package, extract code to separate packages
+// - Create config template file, add instructions to readme; it would need to be copied to the data directory
 // - Create/use hidden data dir
 // - Update config
 //   - Item limit per page
