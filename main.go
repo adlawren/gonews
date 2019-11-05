@@ -32,6 +32,7 @@ import (
 )
 
 const (
+	AppDataDir        = ".data"
 	TimestampFilePath = "DB_LAST_UPDATED"
 )
 
@@ -154,7 +155,7 @@ func (gfp *gofeedURLParser) ParseURL(url string) (*gofeed.Feed, error) {
 
 // TODO: Use a singleton instead? How to manage .Close() call.. just put it in main()?
 func appDB() lib.DB {
-	db, err := gorm.Open("sqlite3", fmt.Sprintf("%v.sqlite3", appConfig().GetString("db_name")))
+	db, err := gorm.Open("sqlite3", fmt.Sprintf("%v/db.sqlite3", AppDataDir))
 	if err != nil {
 		log.Fatal(err)
 		return nil
@@ -165,7 +166,7 @@ func appDB() lib.DB {
 
 func fetchFeedsMonitor() {
 	osfs := &osFS{}
-	timestampFile := &lib.TimestampFile{Path: TimestampFilePath}
+	timestampFile := &lib.TimestampFile{Path: fmt.Sprintf("%v/%v", AppDataDir, TimestampFilePath)}
 	feedFetcher := &lib.DefaultFeedFetcher{}
 	feedParser := &gofeedURLParser{Parser: gofeed.NewParser()}
 
@@ -220,7 +221,7 @@ func hideHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	if err := loadConfig(appConfig(), ".", "config"); err != nil {
+	if err := loadConfig(appConfig(), ".data", "config"); err != nil {
 		log.Fatal(err)
 	}
 
