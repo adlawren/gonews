@@ -6,6 +6,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/mmcdole/gofeed"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -92,6 +93,7 @@ type DB interface {
 	Close() error
 	Model(interface{}) DB
 	Update(...interface{}) DB
+	Where(interface{}, ...interface{}) DB
 }
 
 type GofeedURLParser interface {
@@ -108,6 +110,13 @@ type FeedItem struct {
 	AuthorName  string
 	AuthorEmail string
 	Hide        bool
+	Tags        string
+}
+
+// TODO: make this a gorm model, and a table in the db
+type FeedConfig struct {
+	Url  string
+	Tags string
 }
 
 type FeedFetcher interface {
@@ -117,7 +126,7 @@ type FeedFetcher interface {
 // TODO: rename?
 type DefaultFeedFetcher struct{}
 
-func ConvertToFeedItem(goFeedItem *gofeed.Item, feedUrl string) *FeedItem {
+func ConvertToFeedItem(goFeedItem *gofeed.Item, feedConfig *FeedConfig) *FeedItem {
 	var goFeedAuthorName string
 	var goFeedAuthorEmail string
 	if goFeedItem.Author != nil {
@@ -130,14 +139,15 @@ func ConvertToFeedItem(goFeedItem *gofeed.Item, feedUrl string) *FeedItem {
 		Description: goFeedItem.Description,
 		Link:        goFeedItem.Link,
 		Published:   *goFeedItem.PublishedParsed,
-		Url:         feedUrl,
+		Url:         feedConfig.Url,
 		AuthorName:  goFeedAuthorName,
 		AuthorEmail: goFeedAuthorEmail,
+		Tags:        feedConfig.Tags,
 	}
 }
 
-func ProcessGoFeedItem(db DB, goFeedItem *gofeed.Item, feedUrl string) {
-	fi := ConvertToFeedItem(goFeedItem, feedUrl)
+func ProcessGoFeedItem(db DB, goFeedItem *gofeed.Item, feedConfig *FeedConfig) {
+	fi := ConvertToFeedItem(goFeedItem, feedConfig)
 
 	var existingFeedItem FeedItem
 	db.FirstOrCreate(&existingFeedItem, fi)
@@ -152,13 +162,26 @@ func (dff *DefaultFeedFetcher) FetchFeeds(appConfig AppConfig, feedParser Gofeed
 			return errors.New("Feed config must contain url")
 		}
 
+		feedConfig := &FeedConfig{Url: feedUrl}
+
+		if feedTags, exists := feedConfigMap["tags"].([]interface{}); exists {
+			// TODO: see if there's a 'map' function to do this; if not, make one?
+			feedTagsCount := len(feedTags)
+			feedTagsStrings := make([]string, feedTagsCount, feedTagsCount)
+			for i, v := range feedTags {
+				feedTagsStrings[i] = fmt.Sprintf("<%v>", v.(string))
+			}
+
+			feedConfig.Tags = strings.Join(feedTagsStrings, ",")
+		}
+
 		if nextFeed, err := feedParser.ParseURL(feedUrl); err != nil {
 			fmt.Printf("Warning: could not retrieve feed from %v\n", feedUrl)
 		} else if len(nextFeed.Items) < 1 {
 			fmt.Printf("Warning: %v feed is empty\n", feedUrl)
 		} else {
 			for _, goFeedItem := range nextFeed.Items {
-				ProcessGoFeedItem(db, goFeedItem, feedUrl)
+				ProcessGoFeedItem(db, goFeedItem, feedConfig)
 			}
 
 		}

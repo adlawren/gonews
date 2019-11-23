@@ -250,6 +250,11 @@ func mockFeedsConfig() []interface{} {
 
 	testFeed1 := make(map[string]interface{})
 	testFeed1["url"] = "TestUrl"
+	testFeed1["tags"] = make([]interface{}, 2, 2)
+
+	testFeed1TagsArray := testFeed1["tags"].([]interface{})
+	testFeed1TagsArray[0] = "tag1"
+	testFeed1TagsArray[1] = "tag2"
 
 	feeds = append(feeds, testFeed1)
 
@@ -267,6 +272,7 @@ func mockFeedItem() *lib.FeedItem {
 		AuthorName:  "TestAuthorName",
 		AuthorEmail: "TestAuthorEmail",
 		Hide:        false,
+		Tags:        "<tag1>,<tag2>",
 	}
 }
 
@@ -300,6 +306,42 @@ func TestFetchFeeds_ShouldCreateFeedItems(t *testing.T) {
 	feedsConfig := mockFeedsConfig()
 	feed := mockGoFeed()
 	feedItem := mockFeedItem()
+
+	mockAppConfig.EXPECT().Get(gomock.Eq("feeds")).Return(feedsConfig)
+	mockGofeedURLParser.EXPECT().ParseURL(gomock.Eq(feedUrl)).Return(feed, nil)
+
+	mockDB.EXPECT().FirstOrCreate(gomock.Any(), gomock.Any()).DoAndReturn(func(out interface{}, where ...interface{}) lib.DB {
+		newFeedItem := where[0].(*lib.FeedItem)
+		if *newFeedItem != *feedItem {
+			t.Errorf("FeedItem is %v; expected %v\n", newFeedItem, feedItem)
+			t.Fail()
+		}
+
+		return mockDB
+	})
+
+	testFeedFetcher := &lib.DefaultFeedFetcher{}
+	if err := testFeedFetcher.FetchFeeds(mockAppConfig, mockGofeedURLParser, mockDB); err != nil {
+		t.Errorf("FetchFeeds error is %v; expected %v\n", err, nil)
+		t.Fail()
+	}
+}
+
+func TestFetchFeeds_ShouldNotReturnErrorWhenFeedTagsMissing(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockAppConfig := mock_lib.NewMockAppConfig(ctrl)
+	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
+	mockDB := mock_lib.NewMockDB(ctrl)
+
+	feedUrl := "TestUrl"
+	feedsConfig := mockFeedsConfig()
+	feed := mockGoFeed()
+	feedItem := mockFeedItem()
+
+	delete(feedsConfig[0].(map[string]interface{}), "tags")
+	feedItem.Tags = ""
 
 	mockAppConfig.EXPECT().Get(gomock.Eq("feeds")).Return(feedsConfig)
 	mockGofeedURLParser.EXPECT().ParseURL(gomock.Eq(feedUrl)).Return(feed, nil)

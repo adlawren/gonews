@@ -20,7 +20,7 @@ The web app is then accessible at localhost:8080
 To get a shell in the container, with dev tools available, run:
 
 ```
-docker-compose -f docker-compose-dev.yml
+docker-compose -f docker-compose-dev.yml up
 ```
 
 Then run the following to get the container name:

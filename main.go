@@ -3,9 +3,11 @@ package main
 // TODO:
 // - Add support for labels/groups in the config file
 //   - And support for use of these in query parameters; filter output accordingly
+// - Create a new table for the feed configs from the config file
+//   - Replace the 'feed url' field in the feed items with foreign keys, which reference entries in the other table
+//   - Each time the application is started, reload the config and update the database, if it has changed (maybe store the hash of the file in the db too)
+//     - Create a new monitor thread, to watch the config for changes
 // - Rename lib package, extract code to separate packages
-// - Create config template file, add instructions to readme; it would need to be copied to the data directory
-// - Create/use hidden data dir
 // - Update config
 //   - Item limit per page
 //   - Add params to limit the number of feed items retained in the database
@@ -54,6 +56,23 @@ func migrateGormDB(gdb *gormDB) error {
 			},
 			Rollback: func(tx *gorm.DB) error {
 				if err := tx.DropTable("feed_items").Error; err != nil {
+					return err
+				}
+
+				return nil
+			},
+		},
+		{
+			ID: "201911051805",
+			Migrate: func(tx *gorm.DB) error {
+				if err := tx.AutoMigrate(&lib.FeedItem{}).Error; err != nil {
+					return err
+				}
+
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				if err := tx.Table("feed_items").DropColumn("tags").Error; err != nil {
 					return err
 				}
 
@@ -145,6 +164,10 @@ func (gdb *gormDB) Update(attrs ...interface{}) lib.DB {
 	return &gormDB{db: gdb.db.Update(attrs...)}
 }
 
+func (gdb *gormDB) Where(query interface{}, args ...interface{}) lib.DB {
+	return &gormDB{db: gdb.db.Where(query, args...)}
+}
+
 type gofeedURLParser struct {
 	Parser *gofeed.Parser
 }
@@ -177,23 +200,34 @@ func fetchFeedsMonitor() {
 	}
 }
 
-func getOrderedFeedItems(db lib.DB) []*lib.FeedItem {
+func getOrderedFeedItems(db lib.DB, tag string) []*lib.FeedItem {
 	dbOrderedByPublished := db.Order("published DESC", true)
 
 	var feedItems []*lib.FeedItem
-	dbOrderedByPublished.Find(&feedItems, &lib.FeedItem{})
+	if tag != "" {
+		likeString := fmt.Sprintf("%%<%v>%%", tag)
+		dbOrderedByPublished.Where("tags LIKE ?", likeString).Find(&feedItems, &lib.FeedItem{})
+	} else {
+		dbOrderedByPublished.Find(&feedItems, &lib.FeedItem{})
+	}
 
 	return feedItems
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	// TODO: parse url params, filter items
-	//fmt.Println(r.URL.Query())
+	queryParams := r.URL.Query()
+
+	var tag string
+	if tagList, exists := queryParams["tag"]; exists {
+		if len(tagList) > 0 {
+			tag = tagList[0]
+		}
+	}
 
 	db := appDB()
 	defer db.Close()
 
-	feedItems := getOrderedFeedItems(db)
+	feedItems := getOrderedFeedItems(db, tag)
 
 	if t, err := template.ParseFiles("index.html.tmpl"); err != nil {
 		log.Fatal(err)
