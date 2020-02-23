@@ -3,7 +3,7 @@ A simple RSS feed aggregator, written in Go
 
 # Setup
 
-Copy ```config.toml.template``` to ```.data/config.toml```, edit as needed
+Copy ```config.toml.example``` to ```.config/config.toml```, edit as needed
 
 # How-To
 

@@ -5,7 +5,10 @@ services:
       context: .
       dockerfile: ./docker/Dockerfile
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     volumes:
-      - .:/go/src/gonews
-    entrypoint: ./docker/run.sh
+      - ./.config:/go/src/gonews/.config:ro
+      - gonews_data:/data
+    entrypoint: "gonews"
+volumes:
+  gonews_data: {}

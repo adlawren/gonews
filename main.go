@@ -20,21 +20,23 @@ package main
 
 import (
 	"fmt"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
-	"github.com/mmcdole/gofeed"
-	"github.com/spf13/viper"
 	"gonews/lib"
-	"gopkg.in/gormigrate.v1"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
+
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"github.com/mmcdole/gofeed"
+	"github.com/spf13/viper"
+	"gopkg.in/gormigrate.v1"
 )
 
 const (
-	AppDataDir        = ".data"
+	DataDirPath       = "/data/gonews"
+	ConfDirPath       = ".config"
 	TimestampFilePath = "DB_LAST_UPDATED"
 )
 
@@ -178,7 +180,7 @@ func (gfp *gofeedURLParser) ParseURL(url string) (*gofeed.Feed, error) {
 
 // TODO: Use a singleton instead? How to manage .Close() call.. just put it in main()?
 func appDB() lib.DB {
-	db, err := gorm.Open("sqlite3", fmt.Sprintf("%v/db.sqlite3", AppDataDir))
+	db, err := gorm.Open("sqlite3", fmt.Sprintf("%v/db.sqlite3", DataDirPath))
 	if err != nil {
 		log.Fatal(err)
 		return nil
@@ -189,7 +191,7 @@ func appDB() lib.DB {
 
 func fetchFeedsMonitor() {
 	osfs := &osFS{}
-	timestampFile := &lib.TimestampFile{Path: fmt.Sprintf("%v/%v", AppDataDir, TimestampFilePath)}
+	timestampFile := &lib.TimestampFile{Path: fmt.Sprintf("%v/%v", DataDirPath, TimestampFilePath)}
 	feedFetcher := &lib.DefaultFeedFetcher{}
 	feedParser := &gofeedURLParser{Parser: gofeed.NewParser()}
 
@@ -255,7 +257,16 @@ func hideHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	if err := loadConfig(appConfig(), ".data", "config"); err != nil {
+	// Create data dir if it doesn't exist
+	if _, err := os.Stat(DataDirPath); os.IsNotExist(err) {
+		if err := os.MkdirAll(DataDirPath, os.ModeDir); err != nil {
+			log.Fatal(err)
+		}
+	} else if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := loadConfig(appConfig(), ConfDirPath, "config"); err != nil {
 		log.Fatal(err)
 	}
 

@@ -17,4 +17,4 @@ gonews
 # Ignore generated mocks
 mock_lib
 
-.data
+.config
