@@ -3,11 +3,12 @@ package lib
 import (
 	"errors"
 	"fmt"
-	"github.com/jinzhu/gorm"
-	"github.com/mmcdole/gofeed"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/jinzhu/gorm"
+	"github.com/mmcdole/gofeed"
 )
 
 const (
@@ -148,6 +149,18 @@ func ConvertToFeedItem(goFeedItem *gofeed.Item, feedConfig *FeedConfig) *FeedIte
 
 func ProcessGoFeedItem(db DB, goFeedItem *gofeed.Item, feedConfig *FeedConfig) {
 	fi := ConvertToFeedItem(goFeedItem, feedConfig)
+
+	// If an existing item with the same title, link & feed url exists, do
+	// not insert the item
+	var matchingFeedItems []*FeedItem
+	db.Find(&matchingFeedItems, &FeedItem{
+		Title: fi.Title,
+		Link:  fi.Link,
+		Url:   feedConfig.Url,
+	})
+	if len(matchingFeedItems) > 0 {
+		return
+	}
 
 	var existingFeedItem FeedItem
 	db.FirstOrCreate(&existingFeedItem, fi)
