@@ -1,6 +1,9 @@
 package main
 
 // TODO:
+// - Don't use naked errors
+// - Lower case error messages, except logs
+// - Throw errors in methods if pointers are nil
 // - Add support for labels/groups in the config file
 //   - And support for use of these in query parameters; filter output accordingly
 // - Create a new table for the feed configs from the config file
@@ -20,7 +23,12 @@ package main
 
 import (
 	"fmt"
+	"gonews/config"
+	"gonews/db"
+	gndb "gonews/db" // TODO: rename
+	"gonews/fs"
 	"gonews/lib"
+	"gonews/list"
 	"html/template"
 	"log"
 	"net/http"
@@ -30,144 +38,29 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/mmcdole/gofeed"
-	"github.com/spf13/viper"
-	"gopkg.in/gormigrate.v1"
 )
 
 const (
-	DataDirPath       = "/data/gonews"
-	ConfDirPath       = ".config"
-	TimestampFilePath = "DB_LAST_UPDATED"
+	//dataDirPath       = "/data/gonews" // TODO: uncomment
+	dataDirPath       = ".data/"
+	confDirPath       = ".config"
+	timestampFilePath = "DB_LAST_UPDATED"
 )
 
-type IndexTemplateParams struct {
-	Title     string
-	FeedItems []*lib.FeedItem
-}
-
-func migrateGormDB(gdb *gormDB) error {
-	m := gormigrate.New(gdb.db, gormigrate.DefaultOptions, []*gormigrate.Migration{
-		{
-			ID: "201908072046",
-			Migrate: func(tx *gorm.DB) error {
-				if err := tx.AutoMigrate(&lib.FeedItem{}).Error; err != nil {
-					return err
-				}
-
-				return nil
-			},
-			Rollback: func(tx *gorm.DB) error {
-				if err := tx.DropTable("feed_items").Error; err != nil {
-					return err
-				}
-
-				return nil
-			},
-		},
-		{
-			ID: "201911051805",
-			Migrate: func(tx *gorm.DB) error {
-				if err := tx.AutoMigrate(&lib.FeedItem{}).Error; err != nil {
-					return err
-				}
-
-				return nil
-			},
-			Rollback: func(tx *gorm.DB) error {
-				if err := tx.Table("feed_items").DropColumn("tags").Error; err != nil {
-					return err
-				}
-
-				return nil
-			},
-		},
-	})
-
-	return m.Migrate()
-}
-
-func loadConfig(appConfig lib.AppConfig, configPath, configName string) error {
+func loadConfig(appConfig config.Config, configPath, configName string) error {
 	appConfig.SetConfigName(configName)
 	appConfig.AddConfigPath(configPath)
 	return appConfig.ReadInConfig()
 }
 
-type osFS struct{}
+var cfg config.Config
 
-func (osfs *osFS) Stat(path string) (lib.FileInfo, error) {
-	return os.Stat(path)
-}
-
-func (osfs *osFS) Open(path string) (lib.File, error) {
-	return os.Open(path)
-}
-
-func (osfs *osFS) OpenFile(path string, flag int, perm os.FileMode) (lib.File, error) {
-	return os.OpenFile(path, flag, perm)
-}
-
-type viperAppConfig struct{}
-
-func (vac *viperAppConfig) SetConfigName(configName string) {
-	viper.SetConfigName(configName)
-}
-
-func (vac *viperAppConfig) AddConfigPath(configPath string) {
-	viper.AddConfigPath(configPath)
-}
-
-func (vac *viperAppConfig) ReadInConfig() error {
-	return viper.ReadInConfig()
-}
-
-func (vac *viperAppConfig) Get(property string) interface{} {
-	return viper.Get(property)
-}
-
-func (vac *viperAppConfig) GetString(property string) string {
-	return viper.GetString(property)
-}
-
-var vac *viperAppConfig
-
-func appConfig() *viperAppConfig {
-	if vac == nil {
-		vac = &viperAppConfig{}
+func appConfig() config.Config {
+	if cfg == nil {
+		cfg = config.FromViperConfig()
 	}
 
-	return vac
-}
-
-type gormDB struct {
-	db *gorm.DB
-}
-
-func (gdb *gormDB) FirstOrCreate(out interface{}, where ...interface{}) lib.DB {
-	return &gormDB{db: gdb.db.FirstOrCreate(out, where...)}
-}
-
-func (gdb *gormDB) Find(out interface{}, where ...interface{}) lib.DB {
-	return &gormDB{db: gdb.db.Find(out, where...)}
-}
-
-func (gdb *gormDB) Order(value interface{}, reorder ...bool) lib.DB {
-	return &gormDB{db: gdb.db.Order(value, reorder...)}
-}
-
-func (gdb *gormDB) Close() error {
-	return gdb.db.Close()
-}
-
-func (gdb *gormDB) Model(value interface{}) lib.DB {
-	return &gormDB{db: gdb.db.Model(value)}
-}
-
-func (gdb *gormDB) Update(attrs ...interface{}) lib.DB {
-	return &gormDB{db: gdb.db.Update(attrs...)}
-}
-
-func (gdb *gormDB) Where(query interface{}, args ...interface{}) lib.DB {
-	return &gormDB{db: gdb.db.Where(query, args...)}
+	return cfg
 }
 
 type gofeedURLParser struct {
@@ -179,19 +72,21 @@ func (gfp *gofeedURLParser) ParseURL(url string) (*gofeed.Feed, error) {
 }
 
 // TODO: Use a singleton instead? How to manage .Close() call.. just put it in main()?
-func appDB() lib.DB {
-	db, err := gorm.Open("sqlite3", fmt.Sprintf("%v/db.sqlite3", DataDirPath))
+func appDB() db.DB {
+	gdb, err := gorm.Open("sqlite3", fmt.Sprintf("%v/db.sqlite3", dataDirPath))
 	if err != nil {
 		log.Fatal(err)
 		return nil
 	}
 
-	return &gormDB{db: db}
+	return db.FromGormDB(gdb)
 }
 
 func fetchFeedsMonitor() {
-	osfs := &osFS{}
-	timestampFile := &lib.TimestampFile{Path: fmt.Sprintf("%v/%v", DataDirPath, TimestampFilePath)}
+	osfs := fs.FromOSFS()
+	timestampFile := &lib.TimestampFile{
+		Path: fmt.Sprintf("%v/%v", dataDirPath, timestampFilePath),
+	}
 	feedFetcher := &lib.DefaultFeedFetcher{}
 	feedParser := &gofeedURLParser{Parser: gofeed.NewParser()}
 
@@ -200,20 +95,6 @@ func fetchFeedsMonitor() {
 			fmt.Printf("Failed to fetch feeds: %v\n", err)
 		}
 	}
-}
-
-func getOrderedFeedItems(db lib.DB, tag string) []*lib.FeedItem {
-	dbOrderedByPublished := db.Order("published DESC", true)
-
-	var feedItems []*lib.FeedItem
-	if tag != "" {
-		likeString := fmt.Sprintf("%%<%v>%%", tag)
-		dbOrderedByPublished.Where("tags LIKE ?", likeString).Find(&feedItems, &lib.FeedItem{})
-	} else {
-		dbOrderedByPublished.Find(&feedItems, &lib.FeedItem{})
-	}
-
-	return feedItems
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
@@ -229,15 +110,11 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	db := appDB()
 	defer db.Close()
 
-	feedItems := getOrderedFeedItems(db, tag)
-
 	if t, err := template.ParseFiles("index.html.tmpl"); err != nil {
 		log.Fatal(err)
 	} else {
-		t.Execute(w, &IndexTemplateParams{
-			Title:     appConfig().GetString("homepage_title"),
-			FeedItems: feedItems,
-		})
+		title := appConfig().GetString("homepage_title")
+		t.Execute(w, list.New(db, title, tag))
 	}
 }
 
@@ -247,36 +124,47 @@ func hideHandler(w http.ResponseWriter, r *http.Request) {
 	db := appDB()
 	defer db.Close()
 
-	if id, err := strconv.ParseUint(r.PostFormValue("ID"), 10, 64); err == nil {
-		var feedItem lib.FeedItem
-		feedItem.ID = uint(id)
-		db.Model(&feedItem).Update("Hide", true)
+	id, err := strconv.ParseUint(r.PostFormValue("ID"), 10, 64)
+	if err == nil {
+		var item gndb.Item
+		item.ID = uint(id)
+		db.Model(&item).Update("Hide", true)
 	}
 
 	http.Redirect(w, r, "/", 303)
 }
 
 func main() {
+	adb := appDB()
+	defer adb.Close()
+
+	if err := db.MigrateGormDB(adb); err != nil {
+		log.Fatal(err)
+	}
+
+	return
+
 	// Create data dir if it doesn't exist
-	if _, err := os.Stat(DataDirPath); os.IsNotExist(err) {
-		if err := os.MkdirAll(DataDirPath, os.ModeDir); err != nil {
+	if _, err := os.Stat(dataDirPath); os.IsNotExist(err) {
+		if err := os.MkdirAll(dataDirPath, os.ModeDir); err != nil {
 			log.Fatal(err)
 		}
 	} else if err != nil {
 		log.Fatal(err)
 	}
 
-	if err := loadConfig(appConfig(), ConfDirPath, "config"); err != nil {
+	if err := loadConfig(appConfig(), confDirPath, "config"); err != nil {
 		log.Fatal(err)
 	}
 
 	// TODO: add a config param to enable logging
 	// db.LogMode(true)
 
-	db := appDB()
-	defer db.Close()
+	//adb := appDB()
+	adb = appDB()
+	defer adb.Close()
 
-	if err := migrateGormDB(db.(*gormDB)); err != nil {
+	if err := db.MigrateGormDB(adb); err != nil {
 		log.Fatal(err)
 	}
 

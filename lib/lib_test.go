@@ -1,30 +1,31 @@
-package main
+package lib
 
 import (
 	"errors"
-	"github.com/golang/mock/gomock"
-	"github.com/mmcdole/gofeed"
+	"gonews/db"
+	"gonews/fs"
+	"gonews/item"
 	"gonews/lib"
+	"gonews/mock_config"
+	"gonews/mock_db"
+	"gonews/mock_fs"
 	"gonews/mock_lib"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/golang/mock/gomock"
+	"github.com/mmcdole/gofeed"
 )
 
-func TestMain(m *testing.M) {
-	exitStatus := m.Run()
-
-	os.Exit(exitStatus)
-}
-
-func TestTimestampFile_ParseShouldReturnNilTimeWhenFileDoesntExist(t *testing.T) {
+func TestTimestampFile_ParseReturnsNilTimeWhenFileDoesntExist(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	testTimestampFilePath := "test_file"
 	testTimestampFile := &lib.TimestampFile{Path: testTimestampFilePath}
 
-	mockFS := mock_lib.NewMockFS(ctrl)
+	mockFS := mock_fs.NewMockFS(ctrl)
 
 	mockFS.EXPECT().Stat(gomock.Eq(testTimestampFilePath)).Return(nil, os.ErrNotExist)
 
@@ -39,15 +40,15 @@ func TestTimestampFile_ParseShouldReturnNilTimeWhenFileDoesntExist(t *testing.T)
 	}
 }
 
-func TestTimestampFile_ParseShouldReturnNilWhenFileOpenFails(t *testing.T) {
+func TestTimestampFile_ParseReturnsNilWhenFileOpenFails(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	testTimestampFilePath := "test_file"
 	testTimestampFile := &lib.TimestampFile{Path: testTimestampFilePath}
 
-	mockFS := mock_lib.NewMockFS(ctrl)
-	mockFile := mock_lib.NewMockFile(ctrl)
+	mockFS := mock_fs.NewMockFS(ctrl)
+	mockFile := mock_fs.NewMockFile(ctrl)
 
 	expectedError := errors.New("test")
 
@@ -64,15 +65,15 @@ func TestTimestampFile_ParseShouldReturnNilWhenFileOpenFails(t *testing.T) {
 	}
 }
 
-func TestTimestampFile_ParseShouldReturnNilWhenFileReadFails(t *testing.T) {
+func TestTimestampFile_ParseReturnsNilWhenFileReadFails(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	testTimestampFilePath := "test_file"
 	testTimestampFile := &lib.TimestampFile{Path: testTimestampFilePath}
 
-	mockFS := mock_lib.NewMockFS(ctrl)
-	mockFile := mock_lib.NewMockFile(ctrl)
+	mockFS := mock_fs.NewMockFS(ctrl)
+	mockFile := mock_fs.NewMockFile(ctrl)
 
 	expectedError := errors.New("test")
 
@@ -90,15 +91,15 @@ func TestTimestampFile_ParseShouldReturnNilWhenFileReadFails(t *testing.T) {
 	}
 }
 
-func TestTimestampFile_ParseShouldReturnNilWhenTimeParseFails(t *testing.T) {
+func TestTimestampFile_ParseReturnsNilWhenTimeParseFails(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	testTimestampFilePath := "test_file"
 	testTimestampFile := &lib.TimestampFile{Path: testTimestampFilePath}
 
-	mockFS := mock_lib.NewMockFS(ctrl)
-	mockFile := mock_lib.NewMockFile(ctrl)
+	mockFS := mock_fs.NewMockFS(ctrl)
+	mockFile := mock_fs.NewMockFile(ctrl)
 
 	mockFS.EXPECT().Stat(gomock.Eq(testTimestampFilePath)).Return(nil, nil)
 	mockFS.EXPECT().Open(gomock.Eq(testTimestampFilePath)).Return(mockFile, nil)
@@ -116,15 +117,15 @@ func TestTimestampFile_ParseShouldReturnNilWhenTimeParseFails(t *testing.T) {
 	}
 }
 
-func TestTimestampFile_ParseShouldReturnTime(t *testing.T) {
+func TestTimestampFile_ParseReturnsTime(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	testTimestampFilePath := "test_file"
 	testTimestampFile := &lib.TimestampFile{Path: testTimestampFilePath}
 
-	mockFS := mock_lib.NewMockFS(ctrl)
-	mockFile := mock_lib.NewMockFile(ctrl)
+	mockFS := mock_fs.NewMockFS(ctrl)
+	mockFile := mock_fs.NewMockFile(ctrl)
 
 	expectedTime, _ := time.Parse(time.UnixDate, time.Now().Format(time.UnixDate))
 
@@ -148,14 +149,14 @@ func TestTimestampFile_ParseShouldReturnTime(t *testing.T) {
 	}
 }
 
-func TestTimestampFile_UpdateShouldReturnErrorWhenOpenFileFailed(t *testing.T) {
+func TestTimestampFile_UpdateReturnsErrorWhenOpenFileFailed(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	testTimestampFilePath := "test_file"
 	testTimestampFile := &lib.TimestampFile{Path: testTimestampFilePath}
 
-	mockFS := mock_lib.NewMockFS(ctrl)
+	mockFS := mock_fs.NewMockFS(ctrl)
 
 	newTime := time.Now()
 	expectedError := os.ErrPermission
@@ -170,15 +171,15 @@ func TestTimestampFile_UpdateShouldReturnErrorWhenOpenFileFailed(t *testing.T) {
 	}
 }
 
-func TestTimestampFile_UpdateShouldReturnErrorWhenWriteStringFailed(t *testing.T) {
+func TestTimestampFile_UpdateReturnsErrorWhenWriteStringFailed(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	testTimestampFilePath := "test_file"
 	testTimestampFile := &lib.TimestampFile{Path: testTimestampFilePath}
 
-	mockFS := mock_lib.NewMockFS(ctrl)
-	mockFile := mock_lib.NewMockFile(ctrl)
+	mockFS := mock_fs.NewMockFS(ctrl)
+	mockFile := mock_fs.NewMockFile(ctrl)
 
 	newTime := time.Now()
 	expectedError := os.ErrPermission
@@ -194,15 +195,15 @@ func TestTimestampFile_UpdateShouldReturnErrorWhenWriteStringFailed(t *testing.T
 	}
 }
 
-func TestTimestampFile_UpdateShouldReturnErrorWhenCloseFailed(t *testing.T) {
+func TestTimestampFile_UpdateReturnsErrorWhenCloseFailed(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	testTimestampFilePath := "test_file"
 	testTimestampFile := &lib.TimestampFile{Path: testTimestampFilePath}
 
-	mockFS := mock_lib.NewMockFS(ctrl)
-	mockFile := mock_lib.NewMockFile(ctrl)
+	mockFS := mock_fs.NewMockFS(ctrl)
+	mockFile := mock_fs.NewMockFile(ctrl)
 
 	newTime := time.Now()
 	expectedError := os.ErrPermission
@@ -219,15 +220,15 @@ func TestTimestampFile_UpdateShouldReturnErrorWhenCloseFailed(t *testing.T) {
 	}
 }
 
-func TestTimestampFile_UpdateShouldReturnNilWhenTimeUpdated(t *testing.T) {
+func TestTimestampFile_UpdateReturnsNilWhenTimeUpdated(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	testTimestampFilePath := "test_file"
 	testTimestampFile := &lib.TimestampFile{Path: testTimestampFilePath}
 
-	mockFS := mock_lib.NewMockFS(ctrl)
-	mockFile := mock_lib.NewMockFile(ctrl)
+	mockFS := mock_fs.NewMockFS(ctrl)
+	mockFile := mock_fs.NewMockFile(ctrl)
 
 	newTime := time.Now()
 	var expectedFileMode os.FileMode = 0644
@@ -261,18 +262,18 @@ func mockFeedsConfig() []interface{} {
 	return feeds
 }
 
-func mockFeedItem() *lib.FeedItem {
+func mockFeedItem() *item.Item {
 	var nilTime time.Time
-	return &lib.FeedItem{
+	return &item.Item{
+		Person: gofeed.Person{
+			Name:  "TestAuthorName",
+			Email: "TestAuthorEmail",
+		},
 		Title:       "TestTitle",
 		Description: "TestDescription",
 		Link:        "TestLink",
 		Published:   nilTime,
-		Url:         "TestUrl",
-		AuthorName:  "TestAuthorName",
-		AuthorEmail: "TestAuthorEmail",
 		Hide:        false,
-		Tags:        "<tag1>,<tag2>",
 	}
 }
 
@@ -294,24 +295,24 @@ func mockGoFeed() *gofeed.Feed {
 	}
 }
 
-func TestFetchFeeds_ShouldCreateFeedItems(t *testing.T) {
+func TestFetchFeeds_CreatesFeedItems(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockAppConfig := mock_lib.NewMockAppConfig(ctrl)
+	mockAppConfig := mock_config.NewMockConfig(ctrl)
 	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
-	mockDB := mock_lib.NewMockDB(ctrl)
+	mockDB := mock_db.NewMockDB(ctrl)
 
-	feedUrl := "TestUrl"
+	feedURL := "TestUrl"
 	feedsConfig := mockFeedsConfig()
-	feed := mockGoFeed()
+	f := mockGoFeed()
 	feedItem := mockFeedItem()
 
 	mockAppConfig.EXPECT().Get(gomock.Eq("feeds")).Return(feedsConfig)
-	mockGofeedURLParser.EXPECT().ParseURL(gomock.Eq(feedUrl)).Return(feed, nil)
+	mockGofeedURLParser.EXPECT().ParseURL(gomock.Eq(feedURL)).Return(f, nil)
 
-	mockDB.EXPECT().FirstOrCreate(gomock.Any(), gomock.Any()).DoAndReturn(func(out interface{}, where ...interface{}) lib.DB {
-		newFeedItem := where[0].(*lib.FeedItem)
+	mockDB.EXPECT().FirstOrCreate(gomock.Any(), gomock.Any()).DoAndReturn(func(out interface{}, where ...interface{}) db.DB {
+		newFeedItem := where[0].(*item.Item)
 		if *newFeedItem != *feedItem {
 			t.Errorf("FeedItem is %v; expected %v\n", newFeedItem, feedItem)
 			t.Fail()
@@ -327,27 +328,26 @@ func TestFetchFeeds_ShouldCreateFeedItems(t *testing.T) {
 	}
 }
 
-func TestFetchFeeds_ShouldNotReturnErrorWhenFeedTagsMissing(t *testing.T) {
+func TestFetchFeeds_ReturnsNoErrorWhenFeedTagsMissing(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockAppConfig := mock_lib.NewMockAppConfig(ctrl)
+	mockAppConfig := mock_config.NewMockConfig(ctrl)
 	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
-	mockDB := mock_lib.NewMockDB(ctrl)
+	mockDB := mock_db.NewMockDB(ctrl)
 
-	feedUrl := "TestUrl"
+	feedURL := "TestUrl"
 	feedsConfig := mockFeedsConfig()
-	feed := mockGoFeed()
+	f := mockGoFeed()
 	feedItem := mockFeedItem()
 
 	delete(feedsConfig[0].(map[string]interface{}), "tags")
-	feedItem.Tags = ""
 
 	mockAppConfig.EXPECT().Get(gomock.Eq("feeds")).Return(feedsConfig)
-	mockGofeedURLParser.EXPECT().ParseURL(gomock.Eq(feedUrl)).Return(feed, nil)
+	mockGofeedURLParser.EXPECT().ParseURL(gomock.Eq(feedURL)).Return(f, nil)
 
-	mockDB.EXPECT().FirstOrCreate(gomock.Any(), gomock.Any()).DoAndReturn(func(out interface{}, where ...interface{}) lib.DB {
-		newFeedItem := where[0].(*lib.FeedItem)
+	mockDB.EXPECT().FirstOrCreate(gomock.Any(), gomock.Any()).DoAndReturn(func(out interface{}, where ...interface{}) db.DB {
+		newFeedItem := where[0].(*item.Item)
 		if *newFeedItem != *feedItem {
 			t.Errorf("FeedItem is %v; expected %v\n", newFeedItem, feedItem)
 			t.Fail()
@@ -363,13 +363,13 @@ func TestFetchFeeds_ShouldNotReturnErrorWhenFeedTagsMissing(t *testing.T) {
 	}
 }
 
-func TestFetchFeeds_ShouldReturnErrorWhenFeedUrlMissing(t *testing.T) {
+func TestFetchFeeds_ReturnsErrorWhenFeedUrlMissing(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockAppConfig := mock_lib.NewMockAppConfig(ctrl)
+	mockAppConfig := mock_config.NewMockConfig(ctrl)
 	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
-	mockDB := mock_lib.NewMockDB(ctrl)
+	mockDB := mock_db.NewMockDB(ctrl)
 
 	feedsConfig := mockFeedsConfig()
 	delete(feedsConfig[0].(map[string]interface{}), "url")
@@ -383,19 +383,19 @@ func TestFetchFeeds_ShouldReturnErrorWhenFeedUrlMissing(t *testing.T) {
 	}
 }
 
-func TestFetchFeeds_ShouldNotCreateFeedItemsWhenUrlUnparsed(t *testing.T) {
+func TestFetchFeeds_DoesNotCreateFeedItemsWhenUrlUnparsed(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockAppConfig := mock_lib.NewMockAppConfig(ctrl)
+	mockAppConfig := mock_config.NewMockConfig(ctrl)
 	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
-	mockDB := mock_lib.NewMockDB(ctrl)
+	mockDB := mock_db.NewMockDB(ctrl)
 
-	feedUrl := "TestUrl"
+	feedURL := "TestUrl"
 	feedsConfig := mockFeedsConfig()
 
 	mockAppConfig.EXPECT().Get(gomock.Eq("feeds")).Return(feedsConfig)
-	mockGofeedURLParser.EXPECT().ParseURL(gomock.Eq(feedUrl)).Return(nil, errors.New(""))
+	mockGofeedURLParser.EXPECT().ParseURL(gomock.Eq(feedURL)).Return(nil, errors.New(""))
 	mockDB.EXPECT().FirstOrCreate(gomock.Any(), gomock.Any()).Times(0)
 
 	testFeedFetcher := &lib.DefaultFeedFetcher{}
@@ -405,21 +405,21 @@ func TestFetchFeeds_ShouldNotCreateFeedItemsWhenUrlUnparsed(t *testing.T) {
 	}
 }
 
-func TestFetchFeeds_ShouldNotCreateFeedItemsWhenFeedIsEmpty(t *testing.T) {
+func TestFetchFeeds_DoesNotCreateFeedItemsWhenFeedIsEmpty(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockAppConfig := mock_lib.NewMockAppConfig(ctrl)
+	mockAppConfig := mock_config.NewMockConfig(ctrl)
 	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
-	mockDB := mock_lib.NewMockDB(ctrl)
+	mockDB := mock_db.NewMockDB(ctrl)
 
-	feedUrl := "TestUrl"
+	feedURL := "TestUrl"
 	feedsConfig := mockFeedsConfig()
 	feed := mockGoFeed()
 	feed.Items = []*gofeed.Item{}
 
 	mockAppConfig.EXPECT().Get(gomock.Eq("feeds")).Return(feedsConfig)
-	mockGofeedURLParser.EXPECT().ParseURL(gomock.Eq(feedUrl)).Return(feed, nil)
+	mockGofeedURLParser.EXPECT().ParseURL(gomock.Eq(feedURL)).Return(feed, nil)
 	mockDB.EXPECT().FirstOrCreate(gomock.Any(), gomock.Any()).Times(0)
 
 	testFeedFetcher := &lib.DefaultFeedFetcher{}
@@ -429,21 +429,21 @@ func TestFetchFeeds_ShouldNotCreateFeedItemsWhenFeedIsEmpty(t *testing.T) {
 	}
 }
 
-func TestFetchFeedsAfterDelayShouldFetchFeedsWhenFetchPeriodElapsed(t *testing.T) {
+func TestFetchFeedsAfterDelayFetchesFeedsWhenFetchPeriodElapsed(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockAppConfig := mock_lib.NewMockAppConfig(ctrl)
-	mockFS := mock_lib.NewMockFS(ctrl)
+	mockAppConfig := mock_config.NewMockConfig(ctrl)
+	mockFS := mock_fs.NewMockFS(ctrl)
 	mockTimestamp := mock_lib.NewMockPersistentTimestamp(ctrl)
 	mockFeedFetcher := mock_lib.NewMockFeedFetcher(ctrl)
 	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
-	mockDB := mock_lib.NewMockDB(ctrl)
+	mockDB := mock_db.NewMockDB(ctrl)
 
 	currentTime := time.Now()
 
 	mockTimestamp.EXPECT().Parse(gomock.Eq(mockFS)).Return(&currentTime, nil)
-	mockTimestamp.EXPECT().Update(gomock.Eq(mockFS), gomock.Any()).DoAndReturn(func(fs lib.FS, newTime *time.Time) lib.DB {
+	mockTimestamp.EXPECT().Update(gomock.Eq(mockFS), gomock.Any()).DoAndReturn(func(fs fs.FS, newTime *time.Time) error {
 		if !newTime.After(currentTime) {
 			t.Errorf("new time is %v, expected to be after %v\n", newTime, currentTime)
 			t.Fail()
@@ -462,16 +462,16 @@ func TestFetchFeedsAfterDelayShouldFetchFeedsWhenFetchPeriodElapsed(t *testing.T
 	}
 }
 
-func TestFetchFeedsAfterDelayShouldReturnErrorWhenTimestampUnparsed(t *testing.T) {
+func TestFetchFeedsAfterDelayReturnsErrorWhenTimestampUnparsed(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockAppConfig := mock_lib.NewMockAppConfig(ctrl)
-	mockFS := mock_lib.NewMockFS(ctrl)
+	mockAppConfig := mock_config.NewMockConfig(ctrl)
+	mockFS := mock_fs.NewMockFS(ctrl)
 	mockTimestamp := mock_lib.NewMockPersistentTimestamp(ctrl)
 	mockFeedFetcher := mock_lib.NewMockFeedFetcher(ctrl)
 	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
-	mockDB := mock_lib.NewMockDB(ctrl)
+	mockDB := mock_db.NewMockDB(ctrl)
 
 	expectedError := errors.New("")
 	mockTimestamp.EXPECT().Parse(gomock.Eq(mockFS)).Return(nil, expectedError)
@@ -482,16 +482,16 @@ func TestFetchFeedsAfterDelayShouldReturnErrorWhenTimestampUnparsed(t *testing.T
 	}
 }
 
-func TestFetchFeedsAfterDelayShouldReturnErrorWhenFetchPeriodUnparsed(t *testing.T) {
+func TestFetchFeedsAfterDelayReturnsErrorWhenFetchPeriodUnparsed(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockAppConfig := mock_lib.NewMockAppConfig(ctrl)
-	mockFS := mock_lib.NewMockFS(ctrl)
+	mockAppConfig := mock_config.NewMockConfig(ctrl)
+	mockFS := mock_fs.NewMockFS(ctrl)
 	mockTimestamp := mock_lib.NewMockPersistentTimestamp(ctrl)
 	mockFeedFetcher := mock_lib.NewMockFeedFetcher(ctrl)
 	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
-	mockDB := mock_lib.NewMockDB(ctrl)
+	mockDB := mock_db.NewMockDB(ctrl)
 
 	var nilTime time.Time
 
@@ -504,16 +504,16 @@ func TestFetchFeedsAfterDelayShouldReturnErrorWhenFetchPeriodUnparsed(t *testing
 	}
 }
 
-func TestFetchFeedsAfterDelayShouldReturnErrorWhenFetchDelayUnparsed(t *testing.T) {
+func TestFetchFeedsAfterDelayReturnsErrorWhenFetchDelayUnparsed(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockAppConfig := mock_lib.NewMockAppConfig(ctrl)
-	mockFS := mock_lib.NewMockFS(ctrl)
+	mockAppConfig := mock_config.NewMockConfig(ctrl)
+	mockFS := mock_fs.NewMockFS(ctrl)
 	mockTimestamp := mock_lib.NewMockPersistentTimestamp(ctrl)
 	mockFeedFetcher := mock_lib.NewMockFeedFetcher(ctrl)
 	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
-	mockDB := mock_lib.NewMockDB(ctrl)
+	mockDB := mock_db.NewMockDB(ctrl)
 
 	var nilTime time.Time
 
@@ -527,16 +527,16 @@ func TestFetchFeedsAfterDelayShouldReturnErrorWhenFetchDelayUnparsed(t *testing.
 	}
 }
 
-func TestFetchFeedsAfterDelayShouldReturnErrorWhenFeedsUnfetched(t *testing.T) {
+func TestFetchFeedsAfterDelayReturnsErrorWhenFeedsUnfetched(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockAppConfig := mock_lib.NewMockAppConfig(ctrl)
-	mockFS := mock_lib.NewMockFS(ctrl)
+	mockAppConfig := mock_config.NewMockConfig(ctrl)
+	mockFS := mock_fs.NewMockFS(ctrl)
 	mockTimestamp := mock_lib.NewMockPersistentTimestamp(ctrl)
 	mockFeedFetcher := mock_lib.NewMockFeedFetcher(ctrl)
 	mockGofeedURLParser := mock_lib.NewMockGofeedURLParser(ctrl)
-	mockDB := mock_lib.NewMockDB(ctrl)
+	mockDB := mock_db.NewMockDB(ctrl)
 
 	var nilTime time.Time
 
