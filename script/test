@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
-mkdir -p mock_lib
-mockgen gonews/lib AppConfig,DB,FS,FeedFetcher,GofeedURLParser,File,FileInfo,PersistentTimestamp > mock_lib/mock_lib.go
-go test
+
+mkdir -p mock_parser
+mockgen gonews/parser GofeedParser > mock_parser/parser.go
+mkdir -p mock_db
+mockgen gonews/db DB > mock_db/db.go
+go test ./...

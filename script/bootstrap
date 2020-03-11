@@ -1,2 +1,7 @@
 #!/usr/bin/env bash
+
+go get -v ./...
+go install -v ./...
+
+go get github.com/stretchr/testify/assert
 go get github.com/golang/mock/mockgen

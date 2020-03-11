@@ -1,256 +1,236 @@
 package main
 
-// TODO:
-// - Add support for labels/groups in the config file
-//   - And support for use of these in query parameters; filter output accordingly
-// - Create a new table for the feed configs from the config file
-//   - Replace the 'feed url' field in the feed items with foreign keys, which reference entries in the other table
-//   - Each time the application is started, reload the config and update the database, if it has changed (maybe store the hash of the file in the db too)
-//     - Create a new monitor thread, to watch the config for changes
-// - Rename lib package, extract code to separate packages
-// - Update config
-//   - Item limit per page
-//   - Add params to limit the number of feed items retained in the database
-//     - And/or 'max retention time'
-// - Display a 'loading' spinner/message when new feed items are being retrieved
-// - Add a manual 'refresh' button which prematurely retrieves the feeds (and updates the 'feed-last-retrieved' time in the db)
-// - Add support for a http-param-based filter; i.e. <base url>?url=<something>&...
-// - Add support for a 'hidden' field in the feed config
-//   - Can hide feeds by default, by use a filter query ^ to see them
-
 import (
 	"fmt"
-	"gonews/lib"
+	"gonews/config"
+	"gonews/db"
+	"gonews/feed"
+	"gonews/page"
+	"gonews/parser"
 	"html/template"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
-	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/mmcdole/gofeed"
-	"github.com/spf13/viper"
-	"gopkg.in/gormigrate.v1"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 )
 
 const (
-	DataDirPath       = "/data/gonews"
-	ConfDirPath       = ".config"
-	TimestampFilePath = "DB_LAST_UPDATED"
+	dataDirPath = "/data/gonews"
+	confDirPath = ".config"
 )
 
-type IndexTemplateParams struct {
-	Title     string
-	FeedItems []*lib.FeedItem
-}
+var cfg *config.Config
 
-func migrateGormDB(gdb *gormDB) error {
-	m := gormigrate.New(gdb.db, gormigrate.DefaultOptions, []*gormigrate.Migration{
-		{
-			ID: "201908072046",
-			Migrate: func(tx *gorm.DB) error {
-				if err := tx.AutoMigrate(&lib.FeedItem{}).Error; err != nil {
-					return err
-				}
-
-				return nil
-			},
-			Rollback: func(tx *gorm.DB) error {
-				if err := tx.DropTable("feed_items").Error; err != nil {
-					return err
-				}
-
-				return nil
-			},
-		},
-		{
-			ID: "201911051805",
-			Migrate: func(tx *gorm.DB) error {
-				if err := tx.AutoMigrate(&lib.FeedItem{}).Error; err != nil {
-					return err
-				}
-
-				return nil
-			},
-			Rollback: func(tx *gorm.DB) error {
-				if err := tx.Table("feed_items").DropColumn("tags").Error; err != nil {
-					return err
-				}
-
-				return nil
-			},
-		},
-	})
-
-	return m.Migrate()
-}
-
-func loadConfig(appConfig lib.AppConfig, configPath, configName string) error {
-	appConfig.SetConfigName(configName)
-	appConfig.AddConfigPath(configPath)
-	return appConfig.ReadInConfig()
-}
-
-type osFS struct{}
-
-func (osfs *osFS) Stat(path string) (lib.FileInfo, error) {
-	return os.Stat(path)
-}
-
-func (osfs *osFS) Open(path string) (lib.File, error) {
-	return os.Open(path)
-}
-
-func (osfs *osFS) OpenFile(path string, flag int, perm os.FileMode) (lib.File, error) {
-	return os.OpenFile(path, flag, perm)
-}
-
-type viperAppConfig struct{}
-
-func (vac *viperAppConfig) SetConfigName(configName string) {
-	viper.SetConfigName(configName)
-}
-
-func (vac *viperAppConfig) AddConfigPath(configPath string) {
-	viper.AddConfigPath(configPath)
-}
-
-func (vac *viperAppConfig) ReadInConfig() error {
-	return viper.ReadInConfig()
-}
-
-func (vac *viperAppConfig) Get(property string) interface{} {
-	return viper.Get(property)
-}
-
-func (vac *viperAppConfig) GetString(property string) string {
-	return viper.GetString(property)
-}
-
-var vac *viperAppConfig
-
-func appConfig() *viperAppConfig {
-	if vac == nil {
-		vac = &viperAppConfig{}
+func appConfig() (*config.Config, error) {
+	var err error
+	if cfg == nil {
+		cfg, err = config.New(confDirPath, "config")
 	}
 
-	return vac
+	return cfg, errors.Wrap(err, "failed to load config")
 }
 
-type gormDB struct {
-	db *gorm.DB
-}
-
-func (gdb *gormDB) FirstOrCreate(out interface{}, where ...interface{}) lib.DB {
-	return &gormDB{db: gdb.db.FirstOrCreate(out, where...)}
-}
-
-func (gdb *gormDB) Find(out interface{}, where ...interface{}) lib.DB {
-	return &gormDB{db: gdb.db.Find(out, where...)}
-}
-
-func (gdb *gormDB) Order(value interface{}, reorder ...bool) lib.DB {
-	return &gormDB{db: gdb.db.Order(value, reorder...)}
-}
-
-func (gdb *gormDB) Close() error {
-	return gdb.db.Close()
-}
-
-func (gdb *gormDB) Model(value interface{}) lib.DB {
-	return &gormDB{db: gdb.db.Model(value)}
-}
-
-func (gdb *gormDB) Update(attrs ...interface{}) lib.DB {
-	return &gormDB{db: gdb.db.Update(attrs...)}
-}
-
-func (gdb *gormDB) Where(query interface{}, args ...interface{}) lib.DB {
-	return &gormDB{db: gdb.db.Where(query, args...)}
-}
-
-type gofeedURLParser struct {
-	Parser *gofeed.Parser
-}
-
-func (gfp *gofeedURLParser) ParseURL(url string) (*gofeed.Feed, error) {
-	return gfp.Parser.ParseURL(url)
-}
-
-// TODO: Use a singleton instead? How to manage .Close() call.. just put it in main()?
-func appDB() lib.DB {
-	db, err := gorm.Open("sqlite3", fmt.Sprintf("%v/db.sqlite3", DataDirPath))
-	if err != nil {
-		log.Fatal(err)
-		return nil
+func appDB() (db.DB, error) {
+	cfg := config.DBConfig{
+		Path: fmt.Sprintf("%v/db.sqlite3", dataDirPath),
 	}
-
-	return &gormDB{db: db}
+	return db.New(&cfg)
 }
 
-func fetchFeedsMonitor() {
-	osfs := &osFS{}
-	timestampFile := &lib.TimestampFile{Path: fmt.Sprintf("%v/%v", DataDirPath, TimestampFilePath)}
-	feedFetcher := &lib.DefaultFeedFetcher{}
-	feedParser := &gofeedURLParser{Parser: gofeed.NewParser()}
+func fetchFeeds(cfg *config.Config, gp parser.GofeedParser, db db.DB) error {
+	for _, cfgFeed := range cfg.Feeds {
+		f := &feed.Feed{
+			URL: cfgFeed.URL,
+		}
+		err := db.SaveFeed(f)
+		if err != nil {
+			return errors.Wrap(err, "failed to save feed")
+		}
 
-	for {
-		if err := lib.FetchFeedsAfterDelay(appConfig(), osfs, timestampFile, feedFetcher, feedParser, appDB()); err != nil {
-			fmt.Printf("Failed to fetch feeds: %v\n", err)
+		for _, cfgTagName := range cfgFeed.Tags {
+			t := &feed.Tag{
+				Name: cfgTagName,
+			}
+			err := db.SaveTagToFeed(t, f)
+			if err != nil {
+				return errors.Wrap(err, "failed to save tag")
+			}
+		}
+
+		gfeed, err := gp.ParseURL(cfgFeed.URL)
+		if err != nil {
+			return errors.Wrap(err, "failed to parse feed")
+		}
+
+		if len(gfeed.Items) == 0 {
+			log.Warn().Msgf("%s feed is empty", cfgFeed.URL)
+			continue
+		}
+
+		for _, gitem := range gfeed.Items {
+			var i feed.Item
+			err := i.FromGofeedItem(gitem)
+			if err != nil {
+				return errors.Wrap(err, "failed to initialize item")
+			}
+
+			// Don't insert item if there's an existing item with
+			// the same author, title & link
+			existingItem, err := db.MatchingItem(
+				&feed.Item{
+					Person: gofeed.Person{
+						Name: i.Name,
+					},
+					Title: i.Title,
+					Link:  i.Link,
+				})
+			if err != nil {
+				return errors.Wrap(
+					err,
+					"failed to get matching item")
+			}
+			if existingItem.Title == i.Title {
+				log.Info().Msgf(
+					"skipping '%s'",
+					existingItem.Title)
+				continue
+			}
+
+			err = db.SaveItemToFeed(&i, f)
+			if err != nil {
+				return errors.Wrap(err, "failed to save item")
+			}
 		}
 	}
+
+	return nil
 }
 
-func getOrderedFeedItems(db lib.DB, tag string) []*lib.FeedItem {
-	dbOrderedByPublished := db.Order("published DESC", true)
-
-	var feedItems []*lib.FeedItem
-	if tag != "" {
-		likeString := fmt.Sprintf("%%<%v>%%", tag)
-		dbOrderedByPublished.Where("tags LIKE ?", likeString).Find(&feedItems, &lib.FeedItem{})
-	} else {
-		dbOrderedByPublished.Find(&feedItems, &lib.FeedItem{})
+func watchFeeds() {
+	cfg, err := appConfig()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create config client")
+		return
 	}
 
-	return feedItems
+	db, err := appDB()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create db client")
+		return
+	}
+
+	defer db.Close()
+
+	parser, err := parser.New()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create feed parser")
+		return
+	}
+
+	fetchPeriod := cfg.FetchPeriod
+	lastFetched, err := db.Timestamp()
+	if err != nil || lastFetched == nil {
+		log.Error().Err(err).Msg("Failed to get timestamp")
+		return
+	}
+
+	for {
+		wait := fetchPeriod - time.Since(*lastFetched)
+		if wait > 0 {
+			timer := time.NewTimer(wait)
+			select {
+			case <-timer.C:
+				break
+			}
+		}
+
+		err := fetchFeeds(cfg, parser, db)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to fetch feeds")
+		}
+
+		now := time.Now()
+		lastFetched = &now
+		err = db.UpdateTimestamp(lastFetched)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to update timestamp")
+		}
+	}
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 
 	var tag string
-	if tagList, exists := queryParams["tag"]; exists {
+	tagList, exists := queryParams["tag"]
+	if exists {
 		if len(tagList) > 0 {
 			tag = tagList[0]
 		}
 	}
 
-	db := appDB()
+	db, err := appDB()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create db client")
+		return
+	}
+
 	defer db.Close()
 
-	feedItems := getOrderedFeedItems(db, tag)
+	t, err := template.ParseFiles("index.html.tmpl")
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to parse html template")
+		return
+	}
 
-	if t, err := template.ParseFiles("index.html.tmpl"); err != nil {
-		log.Fatal(err)
-	} else {
-		t.Execute(w, &IndexTemplateParams{
-			Title:     appConfig().GetString("homepage_title"),
-			FeedItems: feedItems,
-		})
+	cfg, err := appConfig()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create config client")
+		return
+	}
+
+	p, err := page.New(db, cfg.AppTitle, tag)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create page")
+		return
+	}
+
+	err = t.Execute(w, p)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to render html template")
 	}
 }
 
 func hideHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 
-	db := appDB()
+	db, err := appDB()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create db client")
+		return
+	}
+
 	defer db.Close()
 
-	if id, err := strconv.ParseUint(r.PostFormValue("ID"), 10, 64); err == nil {
-		var feedItem lib.FeedItem
-		feedItem.ID = uint(id)
-		db.Model(&feedItem).Update("Hide", true)
+	id, err := strconv.ParseUint(r.PostFormValue("ID"), 10, 64)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed parse form ID")
+		return
+	}
+
+	var item feed.Item
+	item.ID = uint(id)
+	item.Hide = true
+
+	err = db.SaveItem(&item)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to update item")
+		return
 	}
 
 	http.Redirect(w, r, "/", 303)
@@ -258,32 +238,38 @@ func hideHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	// Create data dir if it doesn't exist
-	if _, err := os.Stat(DataDirPath); os.IsNotExist(err) {
-		if err := os.MkdirAll(DataDirPath, os.ModeDir); err != nil {
-			log.Fatal(err)
-		}
-	} else if err != nil {
-		log.Fatal(err)
+	_, err := os.Stat(dataDirPath)
+	if err != nil && os.IsNotExist(err) {
+		err = os.MkdirAll(dataDirPath, os.ModeDir)
 	}
 
-	if err := loadConfig(appConfig(), ConfDirPath, "config"); err != nil {
-		log.Fatal(err)
+	if err != nil {
+		log.Error().Err(err).Msg("Data directory is inaccessible")
+		return
 	}
 
 	// TODO: add a config param to enable logging
 	// db.LogMode(true)
 
-	db := appDB()
-	defer db.Close()
+	adb, err := appDB()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create db client")
+		return
+	}
 
-	if err := migrateGormDB(db.(*gormDB)); err != nil {
-		log.Fatal(err)
+	defer adb.Close()
+
+	err = db.Migrate(adb)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to migrate db")
+		return
 	}
 
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/hide", hideHandler)
 
-	go fetchFeedsMonitor()
+	go watchFeeds()
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	err = http.ListenAndServe(":8080", nil)
+	log.Error().Err(err).Msg("Server failed")
 }
