@@ -15,6 +15,7 @@
 gonews
 
 # Ignore generated mocks
-mock_lib
+mock_db
+mock_parser
 
 .config
