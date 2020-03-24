@@ -94,7 +94,8 @@ func (gdb *gormDB) FeedsFromTag(t *feed.Tag) ([]*feed.Feed, error) {
 }
 
 func (gdb *gormDB) SaveFeed(f *feed.Feed) error {
-	err := gdb.db.Save(f).Error
+	var existingFeed feed.Feed
+	err := gdb.db.FirstOrCreate(&existingFeed, f).Error
 	return errors.Wrap(err, "failed to save feed")
 }
 
@@ -113,7 +114,8 @@ func (gdb *gormDB) SaveTagToFeed(t *feed.Tag, f *feed.Feed) error {
 
 	t.FeedID = existingFeed.ID
 
-	err = gdb.db.Save(t).Error
+	var existingTag feed.Tag
+	err = gdb.db.FirstOrCreate(&existingTag, t).Error
 	return errors.Wrap(err, "failed to save tag")
 }
 
