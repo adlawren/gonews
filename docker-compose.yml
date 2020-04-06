@@ -10,6 +10,7 @@ services:
       - ./.config:/go/src/gonews/.config:ro
       - gonews_data:/data
     logging:
+      driver: json-file
       options:
         max-size: "50m"
 volumes:
