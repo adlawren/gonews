@@ -2,6 +2,7 @@ package feed
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -14,6 +15,10 @@ type Feed struct {
 	URL string
 }
 
+func (f Feed) String() string {
+	return fmt.Sprintf("Feed{URL: %s}", f.URL)
+}
+
 // Tag contains the data associated with a feed tag stored in the database
 // Tag lists could be serialized and stored as strings in feeds table instead,
 // but this seems cleaner
@@ -21,6 +26,10 @@ type Tag struct {
 	gorm.Model
 	Name   string
 	FeedID uint
+}
+
+func (t Tag) String() string {
+	return fmt.Sprintf("Tag{Name: %s, FeedID: %d}", t.Name, t.FeedID)
 }
 
 // Item contains the data associated with a feed item stored in the database
@@ -35,6 +44,26 @@ type Item struct {
 	Published   time.Time
 	Hide        bool
 	FeedID      uint
+}
+
+func (i Item) String() string {
+	return fmt.Sprintf(
+		"Item{Author name: %s, "+
+			"Author email: %s, "+
+			"Title: %s, "+
+			"Description: %s, "+
+			"Link: %s, "+
+			"Published: %s, "+
+			"Hide: %t, "+
+			"FeedID: %d}",
+		i.Name,
+		i.Email,
+		i.Title,
+		i.Description,
+		i.Link,
+		i.Published,
+		i.Hide,
+		i.FeedID)
 }
 
 // FromGofeedItem overrides the fields in the item with those from the given

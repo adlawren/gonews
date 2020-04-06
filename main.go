@@ -16,12 +16,14 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/mmcdole/gofeed"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
 const (
-	dataDirPath = "/data/gonews"
-	confDirPath = ".config"
+	envDebug = "GONEWS_DEBUG"
+	dataDir  = "/data/gonews"
+	confDir  = ".config"
 )
 
 var cfg *config.Config
@@ -29,7 +31,7 @@ var cfg *config.Config
 func appConfig() (*config.Config, error) {
 	var err error
 	if cfg == nil {
-		cfg, err = config.New(confDirPath, "config")
+		cfg, err = config.New(confDir, "config")
 	}
 
 	return cfg, errors.Wrap(err, "failed to load config")
@@ -37,7 +39,7 @@ func appConfig() (*config.Config, error) {
 
 func appDB() (db.DB, error) {
 	cfg := config.DBConfig{
-		Path: fmt.Sprintf("%v/db.sqlite3", dataDirPath),
+		Path: fmt.Sprintf("%v/db.sqlite3", dataDir),
 	}
 	return db.New(&cfg)
 }
@@ -95,9 +97,7 @@ func fetchFeeds(cfg *config.Config, gp parser.GofeedParser, db db.DB) error {
 					"failed to get matching item")
 			}
 			if existingItem.Title == i.Title {
-				log.Info().Msgf(
-					"skipping '%s'",
-					existingItem.Title)
+				log.Info().Msgf("skipping: %s", i)
 				continue
 			}
 
@@ -105,6 +105,8 @@ func fetchFeeds(cfg *config.Config, gp parser.GofeedParser, db db.DB) error {
 			if err != nil {
 				return errors.Wrap(err, "failed to save item")
 			}
+
+			log.Debug().Msgf("inserted: %s", i)
 		}
 	}
 
@@ -207,8 +209,6 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func hideHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-
 	db, err := appDB()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create db client")
@@ -217,6 +217,7 @@ func hideHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer db.Close()
 
+	r.ParseForm()
 	id, err := strconv.ParseUint(r.PostFormValue("ID"), 10, 64)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed parse form ID")
@@ -227,29 +228,35 @@ func hideHandler(w http.ResponseWriter, r *http.Request) {
 	item.ID = uint(id)
 	item.Hide = true
 
-	err = db.SaveItem(&item)
+	// Using UpdateItem instead of SaveItem b/c it appears gorm.DB.Save
+	// deletes the item for some reason..
+	err = db.UpdateItem(&item)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to update item")
 		return
 	}
 
-	http.Redirect(w, r, "/", 303)
+	http.Redirect(w, r, r.Referer(), 303)
 }
 
 func main() {
-	// Create data dir if it doesn't exist
-	_, err := os.Stat(dataDirPath)
-	if err != nil && os.IsNotExist(err) {
-		err = os.MkdirAll(dataDirPath, os.ModeDir)
+	if os.Getenv(envDebug) == "true" {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
-	if err != nil {
-		log.Error().Err(err).Msg("Data directory is inaccessible")
+	// Create data dir if it doesn't exist
+	_, err := os.Stat(dataDir)
+	if err != nil && !os.IsNotExist(err) {
+		log.Error().Err(err).Msg("Failed to stat data directory")
 		return
 	}
-
-	// TODO: add a config param to enable logging
-	// db.LogMode(true)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(dataDir, os.ModeDir)
+	}
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create data directory")
+		return
+	}
 
 	adb, err := appDB()
 	if err != nil {

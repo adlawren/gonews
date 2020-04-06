@@ -9,6 +9,8 @@ services:
     volumes:
       - ./.config:/go/src/gonews/.config:ro
       - gonews_data:/data
-    entrypoint: "gonews"
+    logging:
+      options:
+        max-size: "50m"
 volumes:
   gonews_data: {}

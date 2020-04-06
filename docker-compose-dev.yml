@@ -9,6 +9,9 @@ services:
     volumes:
       - .:/go/src/gonews
       - gonews_data_dev:/data
+    environment:
+      GONEWS_DEBUG: "true"
+    entrypoint: "bash"
     stdin_open: true
     tty: true
 volumes:

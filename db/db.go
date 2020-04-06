@@ -26,6 +26,7 @@ type DB interface {
 	ItemsFromFeed(*feed.Feed) ([]*feed.Item, error)
 	SaveItemToFeed(*feed.Item, *feed.Feed) error
 	SaveItem(*feed.Item) error
+	UpdateItem(*feed.Item) error
 	Close() error
 }
 
@@ -131,7 +132,6 @@ func (gdb *gormDB) MatchingItem(i *feed.Item) (*feed.Item, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get matching item")
 	}
-
 	if len(items) > 0 {
 		return items[0], nil
 	}
@@ -160,6 +160,11 @@ func (gdb *gormDB) SaveItemToFeed(i *feed.Item, f *feed.Feed) error {
 func (gdb *gormDB) SaveItem(i *feed.Item) error {
 	err := gdb.db.Save(i).Error
 	return errors.Wrap(err, "failed to save item")
+}
+
+func (gdb *gormDB) UpdateItem(i *feed.Item) error {
+	err := gdb.db.Model(&feed.Item{}).Update(i).Error
+	return errors.Wrap(err, "failed to update item")
 }
 
 func (gdb *gormDB) Close() error {
