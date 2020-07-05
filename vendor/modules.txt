@@ -23,15 +23,13 @@ github.com/hashicorp/hcl/hcl/token
 github.com/hashicorp/hcl/json/parser
 github.com/hashicorp/hcl/json/scanner
 github.com/hashicorp/hcl/json/token
-# github.com/jinzhu/gorm v1.9.12
+# github.com/justinas/nosurf v1.1.0
 ## explicit
-github.com/jinzhu/gorm
-github.com/jinzhu/gorm/dialects/sqlite
-# github.com/jinzhu/inflection v1.0.0
-github.com/jinzhu/inflection
+github.com/justinas/nosurf
 # github.com/magiconair/properties v1.8.1
 github.com/magiconair/properties
-# github.com/mattn/go-sqlite3 v2.0.1+incompatible
+# github.com/mattn/go-sqlite3 v2.0.3+incompatible
+## explicit
 github.com/mattn/go-sqlite3
 # github.com/mitchellh/mapstructure v1.1.2
 github.com/mitchellh/mapstructure
@@ -52,6 +50,9 @@ github.com/pelletier/go-toml
 github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
+# github.com/pressly/goose v2.6.0+incompatible
+## explicit
+github.com/pressly/goose
 # github.com/rs/zerolog v1.18.0
 ## explicit
 github.com/rs/zerolog
@@ -75,13 +76,15 @@ github.com/spf13/viper
 github.com/stretchr/testify/assert
 # github.com/subosito/gotenv v1.2.0
 github.com/subosito/gotenv
-# golang.org/x/net v0.0.0-20200202094626-16171245cfb2
+# golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e
+## explicit
 golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/html/charset
-# golang.org/x/sys v0.0.0-20190412213103-97732733099d
+# golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd
 golang.org/x/sys/unix
-# golang.org/x/text v0.3.0
+# golang.org/x/text v0.3.2
+## explicit
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
 golang.org/x/text/encoding/htmlindex
@@ -92,13 +95,16 @@ golang.org/x/text/encoding/korean
 golang.org/x/text/encoding/simplifiedchinese
 golang.org/x/text/encoding/traditionalchinese
 golang.org/x/text/encoding/unicode
+golang.org/x/text/internal/language
+golang.org/x/text/internal/language/compact
 golang.org/x/text/internal/tag
 golang.org/x/text/internal/utf8internal
 golang.org/x/text/language
 golang.org/x/text/runes
 golang.org/x/text/transform
 golang.org/x/text/unicode/norm
-# golang.org/x/tools v0.0.0-20190828213141-aed303cbaa74
+# golang.org/x/tools v0.0.0-20191127201027-ecd32218bd7f
+## explicit
 golang.org/x/tools/go/gcexportdata
 golang.org/x/tools/go/internal/gcimporter
 golang.org/x/tools/go/internal/packagesdriver
@@ -106,9 +112,7 @@ golang.org/x/tools/go/packages
 golang.org/x/tools/internal/fastwalk
 golang.org/x/tools/internal/gopathwalk
 golang.org/x/tools/internal/semver
-# gopkg.in/gormigrate.v1 v1.6.0
-## explicit
-gopkg.in/gormigrate.v1
+golang.org/x/tools/internal/span
 # gopkg.in/ini.v1 v1.51.0
 gopkg.in/ini.v1
 # gopkg.in/yaml.v2 v2.2.4

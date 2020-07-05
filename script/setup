@@ -1,4 +1,3 @@
 #!/usr/bin/env bash
 
-go clean
-go build -mod=vendor
+ls cmd | xargs -I{} go build -mod=vendor ./cmd/{}
