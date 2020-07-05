@@ -1,0 +1,35 @@
+<h1>{{ .title }}</h1>
+
+<div id='items'>
+</div>
+
+<script>
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+      if (this.readyState != 4) {
+          return
+      }
+
+      if (this.status != 200) {
+          console.log("failed to get JSON")
+          return
+      }
+
+      var items = JSON.parse(this.responseText)
+
+      html = ""
+      for (i = 0; i < items.length; i++) {
+          item = items[i]
+          if (item["hide"]) {
+              continue
+          }
+
+          html += `<div><h3>${item["title"]}</h3><h4>${item["name"]}, ${item["published"]}, <a href="${item["link"]}">link</a></h4>${item["description"]}<br/><form action="/hide" method="post"><input type="number" hidden="true" readonly="true" name="ID" value="${item["ID"]}"><input type="hidden" name="csrf_token" value="{{ .token }}"><input type="submit" value="Hide"></form></div>`
+      }
+
+      document.getElementById("items").innerHTML = html
+  }
+
+  xhttp.open("GET", "/api/v1/items" + window.location.search, true)
+  xhttp.send()
+</script>

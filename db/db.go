@@ -1,173 +1,827 @@
 package db
 
 import (
+	"database/sql"
 	"gonews/config"
 	"gonews/feed"
 	"gonews/timestamp"
+	"os"
 	"time"
 
-	"github.com/jinzhu/gorm"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
+	"github.com/pressly/goose"
 )
 
 // DB contains the methods needed to store and read data from the underlying
 // database
 type DB interface {
+	Ping() error
+	Migrate(string) error
 	Timestamp() (*time.Time, error)
-	UpdateTimestamp(*time.Time) error
-	AllFeeds() ([]*feed.Feed, error) // TODO: rm?
+	SaveTimestamp(*time.Time) error
+	Feeds() ([]*feed.Feed, error)
 	MatchingFeed(*feed.Feed) (*feed.Feed, error)
-	FeedsFromTag(*feed.Tag) ([]*feed.Feed, error)
 	SaveFeed(*feed.Feed) error
+	Tags() ([]*feed.Tag, error)
 	MatchingTag(*feed.Tag) (*feed.Tag, error)
-	SaveTagToFeed(*feed.Tag, *feed.Feed) error
-	AllItems() ([]*feed.Item, error)
-	MatchingItem(*feed.Item) (*feed.Item, error)
+	SaveTag(*feed.Tag) error
+	Items() ([]*feed.Item, error)
+	Item(id uint) (*feed.Item, error)
 	ItemsFromFeed(*feed.Feed) ([]*feed.Item, error)
-	SaveItemToFeed(*feed.Item, *feed.Feed) error
+	ItemsFromTag(*feed.Tag) ([]*feed.Item, error)
+	MatchingItem(*feed.Item) (*feed.Item, error)
 	SaveItem(*feed.Item) error
-	UpdateItem(*feed.Item) error
 	Close() error
 }
 
 // New creates a struct which supports the operations in the DB interface
 func New(cfg *config.DBConfig) (DB, error) {
-	db, err := gorm.Open("sqlite3", cfg.Path)
+	db, err := sql.Open("sqlite3", cfg.DSN)
+	return &sqlDB{db: db}, errors.Wrap(err, "failed to open DB")
+}
+
+type sqlDB struct {
+	db *sql.DB
+}
+
+func scanFeed(rows *sql.Rows, f *feed.Feed) error {
+	return rows.Scan(&f.ID, &f.URL)
+}
+
+func scanTag(rows *sql.Rows, t *feed.Tag) error {
+	return rows.Scan(&t.ID, &t.Name, &t.FeedID)
+}
+
+func scanItem(rows *sql.Rows, i *feed.Item) error {
+	return rows.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Title,
+		&i.Description,
+		&i.Link,
+		&i.Published,
+		&i.FeedID)
+}
+
+func scanTimestamp(rows *sql.Rows, ts *timestamp.Timestamp) error {
+	return rows.Scan(&ts.ID, &ts.T)
+}
+
+func (sdb *sqlDB) Ping() error {
+	return errors.Wrap(sdb.db.Ping(), "failed to ping DB")
+}
+
+func (sdb *sqlDB) Migrate(migrationsDir string) error {
+	_, err := os.Stat(migrationsDir)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to open db")
+		return errors.Wrap(err, "failed to stat migrations directory")
 	}
 
-	return &gormDB{db: db}, nil
-}
-
-type gormDB struct {
-	db *gorm.DB
-}
-
-func (gdb *gormDB) Timestamp() (*time.Time, error) {
-	var t time.Time
-
-	var timestamps []*timestamp.Timestamp
-	err := gdb.db.Find(&timestamps, &timestamp.Timestamp{}).Error
+	err = goose.SetDialect("sqlite3")
 	if err != nil {
-		return &t, errors.Wrap(err, "failed to get timestamp")
+		return errors.Wrap(err, "failed to set goose DB driver")
 	}
 
-	if len(timestamps) == 1 {
-		t = timestamps[0].T
-	} else if len(timestamps) > 1 {
-		return &t, errors.New("more than one timestamp in db")
-	}
-
-	return &t, nil
+	err = goose.Up(sdb.db, migrationsDir)
+	return errors.Wrap(err, "migrations failed")
 }
 
-func (gdb *gormDB) UpdateTimestamp(t *time.Time) error {
+func (sdb *sqlDB) Timestamp() (*time.Time, error) {
+	rows, err := sdb.db.Query("select id, t from timestamps;")
+	defer rows.Close()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to execute query")
+	}
+
 	var ts timestamp.Timestamp
-	err := gdb.db.FirstOrCreate(&ts, &timestamp.Timestamp{}).Error
+	if rows.Next() {
+		err = scanTimestamp(rows, &ts)
+	}
 
+	err = rows.Err()
 	if err != nil {
-		return errors.Wrap(err, "failed to get timestamp")
+		return &ts.T, errors.Wrap(err, "cursor error")
+	}
+
+	return &ts.T, errors.Wrap(err, "failed to scan timestamp")
+}
+
+func (sdb *sqlDB) insertTimestamp(ts *timestamp.Timestamp) error {
+	stmt, err := sdb.db.Prepare("insert into timestamps (t) values (?);")
+	defer stmt.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to prepare statement")
+	}
+
+	res, err := stmt.Exec(ts.T)
+	if err != nil {
+		return errors.Wrap(err, "failed to execute prepared statement")
+	}
+
+	count, err := res.RowsAffected()
+	if err != nil {
+		return errors.Wrap(err, "failed to get affected row count")
+	}
+	if count != 1 {
+		return errors.New("expected one row to be affected")
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return errors.Wrap(err, "failed to get last inserted id")
+	}
+
+	ts.ID = uint(id)
+
+	return nil
+}
+
+func (sdb *sqlDB) updateTimestamp(ts *timestamp.Timestamp) error {
+	stmt, err := sdb.db.Prepare("update timestamps set t=? where id=?;")
+	defer stmt.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to prepare statement")
+	}
+
+	res, err := stmt.Exec(ts.T, ts.ID)
+	if err != nil {
+		return errors.Wrap(err, "failed to execute prepared statement")
+	}
+
+	count, err := res.RowsAffected()
+	if err != nil {
+		return errors.Wrap(err, "failed to get affected row count")
+	}
+	if count != 1 {
+		return errors.New("expected one row to be affected")
+	}
+
+	return nil
+}
+
+func (sdb *sqlDB) SaveTimestamp(t *time.Time) error {
+	rows, err := sdb.db.Query("select count(*) from timestamps;")
+	defer rows.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to execute query")
+	}
+
+	var count int
+	if !rows.Next() {
+		return errors.New("no timestamps found")
+	}
+	err = rows.Scan(&count)
+	if err != nil {
+		return errors.Wrap(err, "failed to scan count")
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return errors.Wrap(err, "cursor error")
+	}
+
+	if count > 1 {
+		err = errors.New("multiple timestamps in DB")
+	}
+
+	err = rows.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to close cursor")
+	}
+
+	rows, err = sdb.db.Query("select id, t from timestamps limit 1;")
+	defer rows.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to execute query")
+	}
+
+	var ts timestamp.Timestamp
+	if rows.Next() {
+		err = scanTimestamp(rows, &ts)
+	}
+	if err != nil {
+		return errors.Wrap(err, "failed to scan timestamp")
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return errors.Wrap(err, "cursor error")
+	}
+
+	err = rows.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to close cursor")
 	}
 
 	ts.T = *t
+	if count == 0 {
+		err = sdb.insertTimestamp(&ts)
+	} else {
+		err = sdb.updateTimestamp(&ts)
+	}
 
-	err = gdb.db.Save(&ts).Error
 	return errors.Wrap(err, "failed to save timestamp")
 }
 
-func (gdb *gormDB) AllFeeds() ([]*feed.Feed, error) {
+func (sdb *sqlDB) Feeds() ([]*feed.Feed, error) {
 	var feeds []*feed.Feed
-	err := gdb.db.Find(&feeds, &feed.Feed{}).Error
-	return feeds, errors.Wrap(err, "failed to get feeds")
+
+	rows, err := sdb.db.Query("select id, url from feeds;")
+	defer rows.Close()
+	if err != nil {
+		return feeds, errors.Wrap(err, "failed to execute query")
+	}
+
+	for rows.Next() {
+		var feed feed.Feed
+		err = scanFeed(rows, &feed)
+		if err != nil {
+			return feeds, errors.Wrap(err, "failed to scan feed")
+		}
+
+		feeds = append(feeds, &feed)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return feeds, errors.Wrap(err, "cursor error")
+	}
+
+	return feeds, nil
 }
 
-func (gdb *gormDB) MatchingFeed(f *feed.Feed) (*feed.Feed, error) {
+func (sdb *sqlDB) FeedsFromTag(t *feed.Tag) ([]*feed.Feed, error) {
+	var feeds []*feed.Feed
+
+	stmt, err := sdb.db.Prepare("select id, url from feeds where id=(select feed_id from tags where name=?);")
+	defer stmt.Close()
+	if err != nil {
+		return feeds, errors.Wrap(err, "failed to prepare statement")
+	}
+
+	rows, err := stmt.Query(t.Name)
+	defer rows.Close()
+	if err != nil {
+		return feeds, errors.Wrap(err, "failed to execute prepared statement")
+	}
+
+	for rows.Next() {
+		var feed feed.Feed
+		err = scanFeed(rows, &feed)
+		if err != nil {
+			return feeds, errors.Wrap(err, "failed to scan feed")
+		}
+
+		feeds = append(feeds, &feed)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return feeds, errors.Wrap(err, "cursor error")
+	}
+
+	return feeds, nil
+}
+
+func (sdb *sqlDB) updateFeed(f *feed.Feed) error {
+	stmt, err := sdb.db.Prepare("update feeds set url=? where id=?;")
+	defer stmt.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to prepare statement")
+	}
+
+	res, err := stmt.Exec(f.URL, f.ID)
+	if err != nil {
+		return errors.Wrap(err, "failed to execute prepared statement")
+	}
+
+	count, err := res.RowsAffected()
+	if err != nil {
+		return errors.Wrap(err, "failed to get affected row count")
+	}
+	if count != 1 {
+		return errors.New("expected one row to be affected")
+	}
+
+	return nil
+}
+
+func (sdb *sqlDB) insertFeed(f *feed.Feed) error {
+	stmt, err := sdb.db.Prepare("insert into feeds (url) values (?);")
+	defer stmt.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to prepare statement")
+	}
+
+	res, err := stmt.Exec(f.URL)
+	if err != nil {
+		return errors.Wrap(err, "failed to execute prepared statement")
+	}
+
+	count, err := res.RowsAffected()
+	if err != nil {
+		return errors.Wrap(err, "failed to get affected row count")
+	}
+	if count != 1 {
+		return errors.New("expected one row to be affected")
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return errors.Wrap(err, "failed to get last inserted id")
+	}
+
+	f.ID = uint(id)
+
+	return nil
+}
+
+func (sdb *sqlDB) MatchingFeed(f *feed.Feed) (*feed.Feed, error) {
+	stmt, err := sdb.db.Prepare("select id, url from feeds where url=?;")
+	defer stmt.Close()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to prepare statement")
+	}
+
+	rows, err := stmt.Query(f.URL)
+	defer rows.Close()
+	if err != nil {
+		return nil, errors.Wrap(
+			err,
+			"failed to execute prepared statement")
+	}
+
+	if !rows.Next() {
+		return nil, nil
+	}
+
 	var feed feed.Feed
-	err := gdb.db.First(&feed, f).Error
-	return &feed, errors.Wrap(err, "failed to get feed")
+	err = scanFeed(rows, &feed)
+	if err != nil {
+		return &feed, errors.Wrap(err, "failed to scan feed")
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, errors.Wrap(err, "cursor error")
+	}
+
+	return &feed, nil
 }
 
-func (gdb *gormDB) FeedsFromTag(t *feed.Tag) ([]*feed.Feed, error) {
-	var feeds []*feed.Feed
-	err := gdb.db.Model(t).Related(&feeds).Error
-	return feeds, errors.Wrap(err, "failed to get feeds")
-}
+func (sdb *sqlDB) SaveFeed(f *feed.Feed) error {
+	stmt, err := sdb.db.Prepare("select count(*) from feeds where id=?;")
+	defer stmt.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to prepare statement")
+	}
 
-func (gdb *gormDB) SaveFeed(f *feed.Feed) error {
-	var existingFeed feed.Feed
-	err := gdb.db.FirstOrCreate(&existingFeed, f).Error
+	rows, err := stmt.Query(f.ID)
+	defer rows.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to execute prepared statement")
+	}
+
+	var count int
+	if !rows.Next() {
+		return errors.New("cursor is empty")
+	}
+	err = rows.Scan(&count)
+	if err != nil {
+		return errors.Wrap(err, "failed to scan count")
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return errors.Wrap(err, "cursor error")
+	}
+
+	err = rows.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to close cursor")
+	}
+
+	if count != 0 {
+		err = sdb.updateFeed(f)
+	} else {
+		err = sdb.insertFeed(f)
+	}
+
 	return errors.Wrap(err, "failed to save feed")
 }
 
-func (gdb *gormDB) MatchingTag(t *feed.Tag) (*feed.Tag, error) {
-	var tag feed.Tag
-	err := gdb.db.First(&tag, t).Error
-	return &tag, errors.Wrap(err, "failed to get tag")
-}
+func (sdb *sqlDB) Tags() ([]*feed.Tag, error) {
+	var tags []*feed.Tag
 
-func (gdb *gormDB) SaveTagToFeed(t *feed.Tag, f *feed.Feed) error {
-	var existingFeed feed.Feed
-	err := gdb.db.Find(&existingFeed, f).Error
+	rows, err := sdb.db.Query("select id, name, feed_id from tags;")
+	defer rows.Close()
 	if err != nil {
-		return errors.Wrap(err, "failed to get feed")
+		return tags, errors.Wrap(err, "failed to execute query")
 	}
 
-	t.FeedID = existingFeed.ID
+	for rows.Next() {
+		var tag feed.Tag
+		err = scanTag(rows, &tag)
+		if err != nil {
+			return tags, errors.Wrap(err, "failed to scan tag")
+		}
 
-	var existingTag feed.Tag
-	err = gdb.db.FirstOrCreate(&existingTag, t).Error
+		tags = append(tags, &tag)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return tags, errors.Wrap(err, "cursor error")
+	}
+
+	return tags, nil
+}
+
+func (sdb *sqlDB) MatchingTag(t *feed.Tag) (*feed.Tag, error) {
+	stmt, err := sdb.db.Prepare("select id, name from tags where name=?;")
+	defer stmt.Close()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to prepare statement")
+	}
+
+	rows, err := stmt.Query(t.Name)
+	defer rows.Close()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to execute prepared statement")
+	}
+
+	if !rows.Next() {
+		return nil, nil
+	}
+
+	var tag feed.Tag
+	err = scanTag(rows, &tag)
+	if err != nil {
+		return &tag, errors.Wrap(err, "failed to scan tag")
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, errors.Wrap(err, "cursor error")
+	}
+
+	return &tag, nil
+}
+
+func (sdb *sqlDB) updateTag(t *feed.Tag) error {
+	stmt, err := sdb.db.Prepare("update tags set name=?, feed_id=? where id=?;")
+	defer stmt.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to prepare statement")
+	}
+
+	res, err := stmt.Exec(t.Name, t.FeedID, t.ID)
+	if err != nil {
+		return errors.Wrap(err, "failed to execute prepared statement")
+	}
+
+	count, err := res.RowsAffected()
+	if err != nil {
+		return errors.Wrap(err, "failed to get affected row count")
+	}
+	if count != 1 {
+		return errors.New("expected one row to be affected")
+	}
+
+	return nil
+}
+
+func (sdb *sqlDB) insertTag(t *feed.Tag) error {
+	stmt, err := sdb.db.Prepare("insert into tags (name, feed_id) values (?, ?);")
+	defer stmt.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to prepare statement")
+	}
+
+	res, err := stmt.Exec(t.Name, t.FeedID)
+	if err != nil {
+		return errors.Wrap(err, "failed to execute prepared statement")
+	}
+
+	count, err := res.RowsAffected()
+	if err != nil {
+		return errors.Wrap(err, "failed to get affected row count")
+	}
+	if count != 1 {
+		return errors.New("expected one row to be affected")
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return errors.Wrap(err, "failed to get last inserted id")
+	}
+
+	t.ID = uint(id)
+
+	return nil
+}
+
+func (sdb *sqlDB) SaveTag(t *feed.Tag) error {
+	stmt, err := sdb.db.Prepare("select count(*) from tags where id=?;")
+	defer stmt.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to prepare statement")
+	}
+
+	rows, err := stmt.Query(t.ID)
+	defer rows.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to execute prepared statement")
+	}
+
+	if !rows.Next() {
+		return errors.New("cursor is empty")
+	}
+
+	var count int
+	err = rows.Scan(&count)
+	if err != nil {
+		return errors.Wrap(err, "failed to scan count")
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return errors.Wrap(err, "cursor error")
+	}
+
+	err = rows.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to close cursor")
+	}
+
+	if count != 0 {
+		err = sdb.updateTag(t)
+	} else {
+		err = sdb.insertTag(t)
+	}
+
 	return errors.Wrap(err, "failed to save tag")
 }
 
-func (gdb *gormDB) AllItems() ([]*feed.Item, error) {
+func (sdb *sqlDB) Items() ([]*feed.Item, error) {
 	var items []*feed.Item
-	err := gdb.db.Find(&items, &feed.Item{}).Error
-	return items, errors.Wrap(err, "failed to get items")
-}
-
-func (gdb *gormDB) MatchingItem(i *feed.Item) (*feed.Item, error) {
-	var items []*feed.Item
-	err := gdb.db.Find(&items, i).Error
+	rows, err := sdb.db.Query("select id, name, email, title, description, link, published, feed_id from items order by published;")
+	defer rows.Close()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get matching item")
-	}
-	if len(items) > 0 {
-		return items[0], nil
+		return items, errors.Wrap(err, "failed to execute query")
 	}
 
-	return &feed.Item{}, nil
-}
+	for rows.Next() {
+		var item feed.Item
+		err = scanItem(rows, &item)
+		if err != nil {
+			return items, errors.Wrap(err, "failed to scan item")
+		}
 
-func (gdb *gormDB) ItemsFromFeed(f *feed.Feed) ([]*feed.Item, error) {
-	var items []*feed.Item
-	err := gdb.db.Model(f).Related(&items).Error
-	return items, errors.Wrap(err, "failed to get items")
-}
+		items = append(items, &item)
+	}
 
-func (gdb *gormDB) SaveItemToFeed(i *feed.Item, f *feed.Feed) error {
-	var existingFeed feed.Feed
-	err := gdb.db.Find(&existingFeed, f).Error
+	err = rows.Err()
 	if err != nil {
-		return errors.Wrap(err, "failed to get feed")
+		return items, errors.Wrap(err, "cursor error")
 	}
 
-	i.FeedID = existingFeed.ID
-
-	return gdb.SaveItem(i)
+	return items, nil
 }
 
-func (gdb *gormDB) SaveItem(i *feed.Item) error {
-	err := gdb.db.Save(i).Error
+func (sdb *sqlDB) MatchingItem(i *feed.Item) (*feed.Item, error) {
+	stmt, err := sdb.db.Prepare("select id, name, email, title, description, link, published, feed_id from items where name=? and title=? and link=? limit 1;")
+	defer stmt.Close()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to prepare statement")
+	}
+
+	rows, err := stmt.Query(i.Name, i.Title, i.Link)
+	defer rows.Close()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to execute prepared statement")
+	}
+
+	if !rows.Next() {
+		return nil, nil
+	}
+
+	var item feed.Item
+	err = scanItem(rows, &item)
+	if err != nil {
+		return &item, errors.Wrap(err, "failed to scan item")
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, errors.Wrap(err, "cursor error")
+	}
+
+	return &item, nil
+}
+
+func (sdb *sqlDB) Item(id uint) (*feed.Item, error) {
+	stmt, err := sdb.db.Prepare("select id, name, email, title, description, link, published, feed_id from items where id=?;")
+	defer stmt.Close()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to prepare statement")
+	}
+
+	rows, err := stmt.Query(id)
+	defer rows.Close()
+	if err != nil {
+		return nil, errors.Wrap(
+			err,
+			"failed to execute prepared statement")
+	}
+
+	if !rows.Next() {
+		return nil, errors.New("cursor is empty")
+	}
+
+	var item feed.Item
+	err = scanItem(rows, &item)
+	if err != nil {
+		return &item, errors.Wrap(err, "failed to scan item")
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return &item, errors.Wrap(err, "cursor error")
+	}
+
+	return &item, nil
+}
+
+func (sdb *sqlDB) ItemsFromFeed(f *feed.Feed) ([]*feed.Item, error) {
+	var items []*feed.Item
+
+	stmt, err := sdb.db.Prepare("select id, name, email, title, description, link, published, feed_id from items where feed_id=? order by published;")
+	defer stmt.Close()
+	if err != nil {
+		return items, errors.Wrap(err, "failed to prepare statement")
+	}
+
+	rows, err := stmt.Query(f.ID)
+	defer rows.Close()
+	if err != nil {
+		return items, errors.Wrap(
+			err,
+			"failed to execute prepared statement")
+	}
+
+	for rows.Next() {
+		var item feed.Item
+		err = scanItem(rows, &item)
+		if err != nil {
+			return items, errors.Wrap(err, "failed to scan item")
+		}
+
+		items = append(items, &item)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return items, errors.Wrap(err, "cursor error")
+	}
+
+	return items, nil
+}
+
+func (sdb *sqlDB) ItemsFromTag(t *feed.Tag) ([]*feed.Item, error) {
+	var items []*feed.Item
+
+	stmt, err := sdb.db.Prepare("select id, name, email, title, description, link, published, feed_id from items where feed_id in (select feed_id from tags where name=?) order by published;")
+	defer stmt.Close()
+	if err != nil {
+		return items, errors.Wrap(
+			err,
+			"failed to create prepared statement")
+	}
+
+	rows, err := stmt.Query(t.Name)
+	defer rows.Close()
+	if err != nil {
+		return items, errors.Wrap(
+			err,
+			"failed to execute prepared statement")
+	}
+
+	for rows.Next() {
+		var item feed.Item
+		err = scanItem(rows, &item)
+		if err != nil {
+			return items, errors.Wrap(err, "failed to scan item")
+		}
+
+		items = append(items, &item)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return items, errors.Wrap(err, "cursor error")
+	}
+
+	return items, nil
+}
+
+func (sdb *sqlDB) updateItem(i *feed.Item) error {
+	stmt, err := sdb.db.Prepare("update items set name=?, email=?, title=?, description=?, link=?, published=?, hide=?, feed_id=? where id=?;")
+	defer stmt.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to prepare statement")
+	}
+
+	res, err := stmt.Exec(i.Name, i.Email, i.Title, i.Description, i.Link, i.Published, i.Hide, i.FeedID, i.ID)
+	if err != nil {
+		return errors.Wrap(err, "failed to execute prepared statement")
+	}
+
+	count, err := res.RowsAffected()
+	if err != nil {
+		return errors.Wrap(err, "failed to get affected row count")
+	}
+	if count != 1 {
+		return errors.New("expected one row to be affected")
+	}
+
+	return nil
+}
+
+func (sdb *sqlDB) insertItem(i *feed.Item) error {
+	stmt, err := sdb.db.Prepare("insert into items (name, email, title, description, link, published, hide, feed_id) values (?, ?, ?, ?, ?, ?, ?, ?);")
+	defer stmt.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to prepare statement")
+	}
+
+	res, err := stmt.Exec(i.Name, i.Email, i.Title, i.Description, i.Link, i.Published, i.Hide, i.FeedID)
+	if err != nil {
+		return errors.Wrap(err, "failed to execute prepared statement")
+	}
+
+	count, err := res.RowsAffected()
+	if err != nil {
+		return errors.Wrap(err, "failed to get affected row count")
+	}
+	if count != 1 {
+		return errors.New("expected one row to be affected")
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return errors.Wrap(err, "failed to get last inserted id")
+	}
+
+	i.ID = uint(id)
+
+	return nil
+}
+
+func (sdb *sqlDB) SaveItem(i *feed.Item) error {
+	stmt, err := sdb.db.Prepare("select count(*) from items where id=?;")
+	defer stmt.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to prepare statement")
+	}
+
+	rows, err := stmt.Query(i.ID)
+	defer rows.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to execute prepared statement")
+	}
+
+	var count int
+	if !rows.Next() {
+		return errors.New("cursor is empty")
+	}
+	err = rows.Scan(&count)
+	if err != nil {
+		return errors.Wrap(err, "failed to scan count")
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return errors.Wrap(err, "cursor error")
+	}
+
+	err = rows.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to close cursor")
+	}
+
+	if count != 0 {
+		err = sdb.updateItem(i)
+	} else {
+		err = sdb.insertItem(i)
+	}
+
 	return errors.Wrap(err, "failed to save item")
 }
 
-func (gdb *gormDB) UpdateItem(i *feed.Item) error {
-	err := gdb.db.Model(&feed.Item{}).Update(i).Error
-	return errors.Wrap(err, "failed to update item")
-}
-
-func (gdb *gormDB) Close() error {
-	err := gdb.db.Close()
-	return errors.Wrap(err, "unable to close db")
+func (sdb *sqlDB) Close() error {
+	err := sdb.db.Close()
+	return errors.Wrap(err, "failed to close DB")
 }
