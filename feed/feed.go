@@ -38,12 +38,12 @@ func (t Tag) String() string {
 type Item struct {
 	gorm.Model
 	gofeed.Person
-	Title       string
-	Description string
-	Link        string
-	Published   time.Time
-	Hide        bool
-	FeedID      uint
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Link        string    `json:"link"`
+	Published   time.Time `json:"time"`
+	Hide        bool      `json:"hide"`
+	FeedID      uint      `json:"feed_id"`
 }
 
 func (i Item) String() string {

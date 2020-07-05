@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"gonews/config"
 	"gonews/db"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/mmcdole/gofeed"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -37,11 +39,10 @@ func appConfig() (*config.Config, error) {
 	return cfg, errors.Wrap(err, "failed to load config")
 }
 
-func appDB() (db.DB, error) {
-	cfg := config.DBConfig{
+func dbConfig() *config.DBConfig {
+	return &config.DBConfig{
 		Path: fmt.Sprintf("%v/db.sqlite3", dataDir),
 	}
-	return db.New(&cfg)
 }
 
 func fetchFeeds(cfg *config.Config, gp parser.GofeedParser, db db.DB) error {
@@ -113,14 +114,8 @@ func fetchFeeds(cfg *config.Config, gp parser.GofeedParser, db db.DB) error {
 	return nil
 }
 
-func watchFeeds() {
-	cfg, err := appConfig()
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to create config client")
-		return
-	}
-
-	db, err := appDB()
+func watchFeeds(cfg *config.Config, dbCfg *config.DBConfig) {
+	db, err := db.New(dbCfg)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create db client")
 		return
@@ -176,7 +171,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	db, err := appDB()
+	db, err := db.New(dbConfig())
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create db client")
 		return
@@ -184,7 +179,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer db.Close()
 
-	t, err := template.ParseFiles("index.html.tmpl")
+	t, err := template.ParseFiles("assets/index.html.tmpl")
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to parse html template")
 		return
@@ -192,6 +187,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 
 	cfg, err := appConfig()
 	if err != nil {
+
 		log.Error().Err(err).Msg("Failed to create config client")
 		return
 	}
@@ -209,7 +205,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func hideHandler(w http.ResponseWriter, r *http.Request) {
-	db, err := appDB()
+	db, err := db.New(dbConfig())
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create db client")
 		return
@@ -236,7 +232,63 @@ func hideHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, r.Referer(), 303)
+	http.Redirect(w, r, r.Referer(), http.StatusSeeOther)
+}
+
+func testHandler(w http.ResponseWriter, r *http.Request) {
+	s := struct {
+		Test string
+	}{
+		Test: "TestString",
+	}
+
+	t, err := template.ParseFiles("assets/index2.html.tmpl")
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to parse html template")
+		return
+	}
+
+	err = t.Execute(w, s)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to render html template")
+	}
+}
+
+type S struct {
+	Test string `json:"test"`
+}
+
+func itemsHandler(w http.ResponseWriter, r *http.Request) {
+	db, err := db.New(dbConfig())
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create db client")
+		return
+	}
+
+	defer db.Close()
+
+	items, err := db.AllItems()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get items")
+		return
+	}
+
+	// s := &S{
+	// 	Test: "val",
+	// }
+
+	//text, err := json.Marshal(s)
+	text, err := json.Marshal(&items)
+	if err != nil {
+		fmt.Printf("err: %v\n", err)
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	_, err = w.Write(text)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to render json")
+		return
+	}
 }
 
 func main() {
@@ -258,7 +310,13 @@ func main() {
 		return
 	}
 
-	adb, err := appDB()
+	cfg, err := appConfig()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create config client")
+		return
+	}
+
+	adb, err := db.New(dbConfig())
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create db client")
 		return
@@ -274,8 +332,11 @@ func main() {
 
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/hide", hideHandler)
+	http.HandleFunc("/test", testHandler)
+	//http.HandleFunc("/api/v1/item", itemHandler) // TODO: replace /hide with this?
+	http.HandleFunc("/api/v1/items", itemsHandler)
 
-	go watchFeeds()
+	go watchFeeds(cfg, dbConfig())
 
 	err = http.ListenAndServe(":8080", nil)
 	log.Error().Err(err).Msg("Server failed")

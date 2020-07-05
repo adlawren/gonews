@@ -203,3 +203,8 @@ func Migrate(db DB) error {
 	m := gormigrate.New(gdb.db, gormigrate.DefaultOptions, migrations)
 	return errors.Wrap(m.Migrate(), "failed to migrate gorm DB")
 }
+
+// TODO: use goose
+func Migrate2(db DB) error {
+	return nil
+}
