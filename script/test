@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 mkdir -p mock_parser
-mockgen gonews/parser GofeedParser > mock_parser/parser.go
+mockgen gonews/parser Parser > mock_parser/parser.go
 mkdir -p mock_db
 mockgen gonews/db DB > mock_db/db.go
 go test ./...

@@ -34,7 +34,7 @@ func New(db db.DB, title, tagName string) (*Page, error) {
 	if tag != nil {
 		feeds, err = db.FeedsFromTag(tag)
 	} else {
-		feeds, err = db.AllFeeds()
+		feeds, err = db.Feeds()
 	}
 
 	if err != nil {

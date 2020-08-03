@@ -20,7 +20,7 @@ func TestNewReturnsErrorWhenUnableToGetFeeds(t *testing.T) {
 	mockErr := mockError()
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().AllFeeds().Return(nil, mockErr)
+	db.EXPECT().Feeds().Return(nil, mockErr)
 
 	pg, err := New(db, title, "")
 	assert.Equal(t, pg.Title, title)
@@ -38,7 +38,7 @@ func TestNewReturnsErrorWhenUnableToGetItems(t *testing.T) {
 	mockFeeds := randFeeds(2)
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().AllFeeds().Return(mockFeeds, nil)
+	db.EXPECT().Feeds().Return(mockFeeds, nil)
 	db.EXPECT().ItemsFromFeed(gomock.Any()).Return(nil, mockErr)
 
 	pg, err := New(db, title, "")
@@ -98,7 +98,7 @@ func TestNewReturnsPage(t *testing.T) {
 	mockItems = append(mockItems, mockItems2...)
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().AllFeeds().Return(mockFeeds, nil)
+	db.EXPECT().Feeds().Return(mockFeeds, nil)
 	db.EXPECT().ItemsFromFeed(gomock.Any()).Return(mockItems1, nil)
 	db.EXPECT().ItemsFromFeed(gomock.Any()).Return(mockItems2, nil)
 

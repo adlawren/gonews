@@ -24,8 +24,7 @@ type FeedConfig struct {
 // DBConfig contains the values needed to connect to the database
 // Note: currently not parsed from the config file
 type DBConfig struct {
-	DSN  string
-	Path string // TODO: rm
+	DSN string
 }
 
 // New creates an instance of Config by parsing the given config file
