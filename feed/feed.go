@@ -32,10 +32,6 @@ func (t Tag) String() string {
 	return fmt.Sprintf("Tag{Name: %s, FeedID: %d}", t.Name, t.FeedID)
 }
 
-func (t *Tag) NewWithFeed(name string, f *Feed) {
-	// TODO
-}
-
 // Item contains the data associated with a feed item stored in the database
 // Some fields copied from gofeed.Item; couldn't embed gofeed.Item because it
 // includes slices, which can't be directly saved to the DB

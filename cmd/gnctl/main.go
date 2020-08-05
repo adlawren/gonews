@@ -162,7 +162,7 @@ func main() {
 	showFeeds := flag.Bool("feeds", false, "show feeds")
 	showTags := flag.Bool("tags", false, "show tags")
 	showItems := flag.Bool("items", false, "show items")
-	tagName := flag.String("feeds-from-tag", "", "show feeds from tag name")
+	tagName := flag.String("items-from-tag", "", "show items from tag name")
 	feedID := flag.Uint("items-from-feed", 0, "show items from feed ID")
 	matchingFeed := flag.String("matching-feed", "", "show matching feed, given serialized feed fields")
 	matchingTag := flag.String("matching-tag", "", "show matching tag, given serialized tag fields")
@@ -252,15 +252,15 @@ func main() {
 	}
 
 	if len(*tagName) > 0 {
-		feeds, err := adb.FeedsFromTag(&feed.Tag{Name: *tagName})
+		items, err := adb.ItemsFromTag(&feed.Tag{Name: *tagName})
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to get feeds")
+			log.Error().Err(err).Msg("Failed to get items")
 			return
 		}
 
-		err = printFeeds(feeds...)
+		err = printItems(items...)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to print feeds")
+			log.Error().Err(err).Msg("Failed to print items")
 			return
 		}
 	}

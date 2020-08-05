@@ -11,7 +11,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// TODO: test
 // Insert any nonexistent feeds & tags from the config into the database
 func InsertMissingFeeds(cfg *config.Config, db db.DB) error {
 	for _, cfgFeed := range cfg.Feeds {

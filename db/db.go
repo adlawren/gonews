@@ -21,7 +21,6 @@ type DB interface {
 	Timestamp() (*time.Time, error)
 	SaveTimestamp(*time.Time) error
 	Feeds() ([]*feed.Feed, error)
-	FeedsFromTag(*feed.Tag) ([]*feed.Feed, error)
 	MatchingFeed(*feed.Feed) (*feed.Feed, error)
 	SaveFeed(*feed.Feed) error
 	Tags() ([]*feed.Tag, error)
@@ -29,6 +28,7 @@ type DB interface {
 	SaveTag(*feed.Tag) error
 	Items() ([]*feed.Item, error)
 	ItemsFromFeed(*feed.Feed) ([]*feed.Item, error)
+	ItemsFromTag(*feed.Tag) ([]*feed.Item, error)
 	MatchingItem(*feed.Item) (*feed.Item, error)
 	SaveItem(*feed.Item) error
 	Close() error
@@ -532,6 +532,51 @@ func (sdb *sqlDB) ItemsFromFeed(f *feed.Feed) ([]*feed.Item, error) {
 		}
 
 		items = append(items, &item)
+	}
+
+	return items, nil
+}
+
+func (sdb *sqlDB) ItemsFromTag(t *feed.Tag) ([]*feed.Item, error) {
+	var items []*feed.Item
+
+	stmt, err := sdb.db.Prepare("select id, name, email, title, description, link, published, feed_id from items where feed_id in (select feed_id from tags where name=?) order by published;")
+	defer stmt.Close()
+	if err != nil {
+		return items, errors.Wrap(
+			err,
+			"failed to create prepared statement")
+	}
+
+	rows, err := stmt.Query(t.Name)
+	defer rows.Close()
+	if err != nil {
+		return items, errors.Wrap(
+			err,
+			"failed to execute prepared statement")
+	}
+
+	for rows.Next() {
+		var item feed.Item
+		err = rows.Scan(
+			&item.ID,
+			&item.Name,
+			&item.Email,
+			&item.Title,
+			&item.Description,
+			&item.Link,
+			&item.Published,
+			&item.FeedID)
+		if err != nil {
+			return items, errors.Wrap(err, "scan failed")
+		}
+
+		items = append(items, &item)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return items, errors.Wrap(err, "cursor error")
 	}
 
 	return items, nil

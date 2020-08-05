@@ -26,13 +26,26 @@ var cfg *config.Config
 var dbCfg *config.DBConfig
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
+	t, err := template.ParseFiles("assets/index.html.tmpl")
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to parse html template")
+		return
+	}
+
+	err = t.Execute(w, &page.Page{Title: cfg.AppTitle})
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to render html template")
+	}
+}
+
+func itemsHandler(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 
-	var tag string
-	tagList, exists := queryParams["tag"]
+	var tagName string
+	tagList, exists := queryParams["tag_name"]
 	if exists {
 		if len(tagList) > 0 {
-			tag = tagList[0]
+			tagName = tagList[0]
 		}
 	}
 
@@ -44,34 +57,12 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer db.Close()
 
-	t, err := template.ParseFiles("assets/index.html.tmpl")
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to parse html template")
-		return
+	var items []*feed.Item
+	if tagName == "" {
+		items, err = db.Items()
+	} else {
+		items, err = db.ItemsFromTag(&feed.Tag{Name: tagName})
 	}
-
-	p, err := page.New(db, cfg.AppTitle, tag)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to create page")
-		return
-	}
-
-	err = t.Execute(w, p)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to render html template")
-	}
-}
-
-func itemsHandler(w http.ResponseWriter, r *http.Request) {
-	db, err := db.New(dbCfg)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to create db client")
-		return
-	}
-
-	defer db.Close()
-
-	items, err := db.Items()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get items")
 		return
