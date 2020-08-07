@@ -14,15 +14,5 @@ services:
     entrypoint: "bash"
     stdin_open: true
     tty: true
-  # mysql:
-  #   image: mysql
-  #   restart: always
-  #   environment:
-  #     MYSQL_ROOT_PASSWORD_FILE: /run/secrets/gonews_dev_mysql_root_pass
-  #   secrets:
-  #     - gonews_dev_mysql_root_pass
-# secrets:
-#   gonews_dev_mysql_root_pass:
-#     external: true
 volumes:
   gonews_data_dev: {}

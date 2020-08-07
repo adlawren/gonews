@@ -3,16 +3,9 @@ module gonews
 go 1.14
 
 require (
-	bitbucket.org/liamstask/goose v0.0.0-20150115234039-8488cc47d90c // indirect
-	github.com/DATA-DOG/go-sqlmock v1.4.1 // indirect
 	github.com/PuerkitoBio/goquery v1.5.1 // indirect
-	github.com/friendsofgo/errors v0.9.2 // indirect
-	github.com/go-delve/delve v1.4.1 // indirect
-	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/golang/mock v1.4.3
-	github.com/jinzhu/gorm v1.9.12
-	github.com/kylelemons/go-gypsy v0.0.0-20160905020020-08cad365cd28 // indirect
-	github.com/lib/pq v1.7.1 // indirect
+	github.com/justinas/nosurf v1.1.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mmcdole/gofeed v1.0.0-beta2
 	github.com/mmcdole/goxpp v0.0.0-20181012175147-0068e33feabf // indirect
@@ -21,12 +14,7 @@ require (
 	github.com/rs/zerolog v1.18.0
 	github.com/spf13/viper v1.6.2
 	github.com/stretchr/testify v1.5.1
-	github.com/volatiletech/inflect v0.0.1 // indirect
-	github.com/volatiletech/null v8.0.0+incompatible // indirect
-	github.com/volatiletech/sqlboiler v3.7.1+incompatible // indirect
-	github.com/walle/lll v1.0.1 // indirect
-	github.com/ziutek/mymysql v1.5.4 // indirect
 	golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e // indirect
-	google.golang.org/appengine v1.6.6 // indirect
-	gopkg.in/gormigrate.v1 v1.6.0 // indirect
+	golang.org/x/text v0.3.2 // indirect
+	golang.org/x/tools v0.0.0-20191127201027-ecd32218bd7f // indirect
 )

@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jinzhu/gorm"
 	"github.com/mmcdole/gofeed"
 )
 
 // Feed contains the data associated with a feed stored in the database
 type Feed struct {
-	gorm.Model
+	ID  uint
 	URL string
 }
 
@@ -23,7 +22,7 @@ func (f Feed) String() string {
 // Tag lists could be serialized and stored as strings in feeds table instead,
 // but this seems cleaner
 type Tag struct {
-	gorm.Model
+	ID     uint
 	Name   string
 	FeedID uint
 }
@@ -36,7 +35,7 @@ func (t Tag) String() string {
 // Some fields copied from gofeed.Item; couldn't embed gofeed.Item because it
 // includes slices, which can't be directly saved to the DB
 type Item struct {
-	gorm.Model
+	ID uint
 	gofeed.Person
 	Title       string    `json:"title"`
 	Description string    `json:"description"`

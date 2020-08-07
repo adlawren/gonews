@@ -12,7 +12,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
@@ -164,6 +163,7 @@ func main() {
 	showItems := flag.Bool("items", false, "show items")
 	tagName := flag.String("items-from-tag", "", "show items from tag name")
 	feedID := flag.Uint("items-from-feed", 0, "show items from feed ID")
+	itemID := flag.Uint("item", 0, "show item with given ID")
 	matchingFeed := flag.String("matching-feed", "", "show matching feed, given serialized feed fields")
 	matchingTag := flag.String("matching-tag", "", "show matching tag, given serialized tag fields")
 	matchingItem := flag.String("matching-item", "", "show matching item, given serialized item fields")
@@ -266,9 +266,7 @@ func main() {
 	}
 
 	if *feedID != 0 {
-		items, err := adb.ItemsFromFeed(&feed.Feed{
-			Model: gorm.Model{ID: *feedID},
-		})
+		items, err := adb.ItemsFromFeed(&feed.Feed{ID: *feedID})
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get items")
 			return
@@ -277,6 +275,20 @@ func main() {
 		err = printItems(items...)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to print items")
+			return
+		}
+	}
+
+	if *itemID != 0 {
+		item, err := adb.Item(*itemID)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to get item")
+			return
+		}
+
+		err = printItems(item)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to print item")
 			return
 		}
 	}

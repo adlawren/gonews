@@ -1,4 +1,4 @@
-<h1>{{.Title}}</h1>
+<h1>{{ .title }}</h1>
 
 <div id='items'>
 </div>
@@ -24,7 +24,7 @@
               continue
           }
 
-          html += `<div><h3>${item["title"]}</h3><h4>${item["name"]}, ${item["published"]}, <a href="${item["link"]}">link</a></h4>${item["description"]}<br/><form action="/hide" method="post"><input type="number" hidden="true" readonly="true" name="ID" value="${item["ID"]}"><input type="submit" value="Hide"></form></div>`
+          html += `<div><h3>${item["title"]}</h3><h4>${item["name"]}, ${item["published"]}, <a href="${item["link"]}">link</a></h4>${item["description"]}<br/><form action="/hide" method="post"><input type="number" hidden="true" readonly="true" name="ID" value="${item["ID"]}"><input type="hidden" name="csrf_token" value="{{ .token }}"><input type="submit" value="Hide"></form></div>`
       }
 
       document.getElementById("items").innerHTML = html

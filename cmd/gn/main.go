@@ -8,12 +8,12 @@ import (
 	"gonews/db"
 	"gonews/feed"
 	"gonews/lib"
-	"gonews/page"
 	"net/http"
 	"os"
 	"strconv"
 	"text/template"
 
+	"github.com/justinas/nosurf"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -25,20 +25,24 @@ const (
 var cfg *config.Config
 var dbCfg *config.DBConfig
 
-func indexHandler(w http.ResponseWriter, r *http.Request) {
+func indexHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	tmplParams := make(map[string]string)
+	tmplParams["title"] = cfg.AppTitle
+	tmplParams["token"] = nosurf.Token(r)
+
 	t, err := template.ParseFiles("assets/index.html.tmpl")
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to parse html template")
 		return
 	}
 
-	err = t.Execute(w, &page.Page{Title: cfg.AppTitle})
+	err = t.Execute(w, tmplParams)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to render html template")
 	}
 }
 
-func itemsHandler(w http.ResponseWriter, r *http.Request) {
+func itemsHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 
 	var tagName string
@@ -81,7 +85,7 @@ func itemsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func hideHandler(w http.ResponseWriter, r *http.Request) {
+func hideHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	db, err := db.New(dbCfg)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create db client")
@@ -166,10 +170,9 @@ func main() {
 		return
 	}
 
-	http.HandleFunc("/", indexHandler)
-	http.HandleFunc("/hide", hideHandler)
-	//http.HandleFunc("/api/v1/item", itemHandler) // TODO: replace /hide with this?
-	http.HandleFunc("/api/v1/items", itemsHandler)
+	http.Handle("/", nosurf.New(http.HandlerFunc(indexHandlerFunc)))
+	http.Handle("/hide", http.HandlerFunc(hideHandlerFunc))
+	http.Handle("/api/v1/items", http.HandlerFunc(itemsHandlerFunc))
 
 	go func() {
 		err := lib.WatchFeeds(cfg, dbCfg)
