@@ -440,7 +440,7 @@ func (sdb *sqlDB) Tags() ([]*feed.Tag, error) {
 }
 
 func (sdb *sqlDB) MatchingTag(t *feed.Tag) (*feed.Tag, error) {
-	stmt, err := sdb.db.Prepare("select id, name from tags where name=?;")
+	stmt, err := sdb.db.Prepare("select id, name, feed_id from tags where name=?;")
 	defer stmt.Close()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to prepare statement")
