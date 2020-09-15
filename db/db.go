@@ -62,6 +62,7 @@ func scanItem(rows *sql.Rows, i *feed.Item) error {
 		&i.Description,
 		&i.Link,
 		&i.Published,
+		&i.Hide,
 		&i.FeedID)
 }
 
@@ -228,7 +229,7 @@ func (sdb *sqlDB) SaveTimestamp(t *time.Time) error {
 func (sdb *sqlDB) Feeds() ([]*feed.Feed, error) {
 	var feeds []*feed.Feed
 
-	rows, err := sdb.db.Query("select id, url from feeds;")
+	rows, err := sdb.db.Query("select * from feeds;")
 	defer rows.Close()
 	if err != nil {
 		return feeds, errors.Wrap(err, "failed to execute query")
@@ -255,7 +256,7 @@ func (sdb *sqlDB) Feeds() ([]*feed.Feed, error) {
 func (sdb *sqlDB) FeedsFromTag(t *feed.Tag) ([]*feed.Feed, error) {
 	var feeds []*feed.Feed
 
-	stmt, err := sdb.db.Prepare("select id, url from feeds where id=(select feed_id from tags where name=?);")
+	stmt, err := sdb.db.Prepare("select * from feeds where id=(select feed_id from tags where name=?);")
 	defer stmt.Close()
 	if err != nil {
 		return feeds, errors.Wrap(err, "failed to prepare statement")
@@ -339,7 +340,7 @@ func (sdb *sqlDB) insertFeed(f *feed.Feed) error {
 }
 
 func (sdb *sqlDB) MatchingFeed(f *feed.Feed) (*feed.Feed, error) {
-	stmt, err := sdb.db.Prepare("select id, url from feeds where url=?;")
+	stmt, err := sdb.db.Prepare("select * from feeds where url=?;")
 	defer stmt.Close()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to prepare statement")
@@ -415,7 +416,7 @@ func (sdb *sqlDB) SaveFeed(f *feed.Feed) error {
 func (sdb *sqlDB) Tags() ([]*feed.Tag, error) {
 	var tags []*feed.Tag
 
-	rows, err := sdb.db.Query("select id, name, feed_id from tags;")
+	rows, err := sdb.db.Query("select * from tags;")
 	defer rows.Close()
 	if err != nil {
 		return tags, errors.Wrap(err, "failed to execute query")
@@ -440,7 +441,7 @@ func (sdb *sqlDB) Tags() ([]*feed.Tag, error) {
 }
 
 func (sdb *sqlDB) MatchingTag(t *feed.Tag) (*feed.Tag, error) {
-	stmt, err := sdb.db.Prepare("select id, name, feed_id from tags where name=?;")
+	stmt, err := sdb.db.Prepare("select * from tags where name=?;")
 	defer stmt.Close()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to prepare statement")
@@ -567,7 +568,7 @@ func (sdb *sqlDB) SaveTag(t *feed.Tag) error {
 
 func (sdb *sqlDB) Items() ([]*feed.Item, error) {
 	var items []*feed.Item
-	rows, err := sdb.db.Query("select id, name, email, title, description, link, published, feed_id from items order by published;")
+	rows, err := sdb.db.Query("select * from items order by published desc;")
 	defer rows.Close()
 	if err != nil {
 		return items, errors.Wrap(err, "failed to execute query")
@@ -592,7 +593,7 @@ func (sdb *sqlDB) Items() ([]*feed.Item, error) {
 }
 
 func (sdb *sqlDB) MatchingItem(i *feed.Item) (*feed.Item, error) {
-	stmt, err := sdb.db.Prepare("select id, name, email, title, description, link, published, feed_id from items where name=? and title=? and link=? limit 1;")
+	stmt, err := sdb.db.Prepare("select * from items where name=? and title=? and link=? limit 1;")
 	defer stmt.Close()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to prepare statement")
@@ -623,7 +624,7 @@ func (sdb *sqlDB) MatchingItem(i *feed.Item) (*feed.Item, error) {
 }
 
 func (sdb *sqlDB) Item(id uint) (*feed.Item, error) {
-	stmt, err := sdb.db.Prepare("select id, name, email, title, description, link, published, feed_id from items where id=?;")
+	stmt, err := sdb.db.Prepare("select * from items where id=?;")
 	defer stmt.Close()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to prepare statement")
@@ -658,7 +659,7 @@ func (sdb *sqlDB) Item(id uint) (*feed.Item, error) {
 func (sdb *sqlDB) ItemsFromFeed(f *feed.Feed) ([]*feed.Item, error) {
 	var items []*feed.Item
 
-	stmt, err := sdb.db.Prepare("select id, name, email, title, description, link, published, feed_id from items where feed_id=? order by published;")
+	stmt, err := sdb.db.Prepare("select * from items where feed_id=? order by published desc;")
 	defer stmt.Close()
 	if err != nil {
 		return items, errors.Wrap(err, "failed to prepare statement")
@@ -693,7 +694,7 @@ func (sdb *sqlDB) ItemsFromFeed(f *feed.Feed) ([]*feed.Item, error) {
 func (sdb *sqlDB) ItemsFromTag(t *feed.Tag) ([]*feed.Item, error) {
 	var items []*feed.Item
 
-	stmt, err := sdb.db.Prepare("select id, name, email, title, description, link, published, feed_id from items where feed_id in (select feed_id from tags where name=?) order by published;")
+	stmt, err := sdb.db.Prepare("select * from items where feed_id in (select feed_id from tags where name=?) order by published desc;")
 	defer stmt.Close()
 	if err != nil {
 		return items, errors.Wrap(

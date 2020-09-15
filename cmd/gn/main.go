@@ -101,11 +101,15 @@ func hideHandlerFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var item feed.Item
-	item.ID = uint(id)
+	item, err := db.Item(uint(id))
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get item from ID")
+		return
+	}
+
 	item.Hide = true
 
-	err = db.SaveItem(&item)
+	err = db.SaveItem(item)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to update item")
 		return
