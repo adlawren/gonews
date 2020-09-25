@@ -179,8 +179,10 @@ func main() {
 	http.Handle("/api/v1/items", http.HandlerFunc(itemsHandlerFunc))
 
 	go func() {
-		err := lib.WatchFeeds(cfg, dbCfg)
-		log.Error().Err(err).Msg("Failed to watch feeds")
+		for {
+			err := lib.WatchFeeds(cfg, dbCfg)
+			log.Error().Err(err).Msg("Failed to watch feeds")
+		}
 	}()
 
 	err = http.ListenAndServe(":8080", nil)
