@@ -1,198 +1,151 @@
 package lib
 
 import (
-	"errors"
-	"fmt"
-	"github.com/jinzhu/gorm"
-	"github.com/mmcdole/gofeed"
-	"os"
+	"gonews/config"
+	"gonews/db"
+	"gonews/feed"
+	"gonews/parser"
 	"time"
+
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 )
 
-const (
-	ByteLimit = 100
-)
-
-type FileInfo interface{}
-
-type File interface {
-	Close() error
-	Read([]byte) (int, error)
-	WriteString(string) (int, error)
-}
-
-type FS interface {
-	Open(string) (File, error)
-	OpenFile(string, int, os.FileMode) (File, error)
-	Stat(string) (FileInfo, error)
-}
-
-type PersistentTimestamp interface {
-	Parse(FS) (*time.Time, error)
-	Update(FS, *time.Time) error
-}
-
-type TimestampFile struct {
-	Path string
-}
-
-func (tf *TimestampFile) Parse(fs FS) (*time.Time, error) {
-	var parsedTime time.Time
-	if _, err := fs.Stat(tf.Path); os.IsNotExist(err) {
-		return &parsedTime, nil
-	} else {
-		if f, err := fs.Open(tf.Path); err != nil {
-			return nil, err
-		} else {
-			// TODO: use ReadAll from ioutil instead
-			bytes := make([]byte, ByteLimit, ByteLimit)
-			if byteCount, err := f.Read(bytes); err != nil {
-				return nil, err
-			} else {
-				timestampString := string(bytes[:byteCount])
-				if parsedTime, err := time.Parse(time.UnixDate, timestampString); err != nil {
-					return nil, err
-				} else {
-					return &parsedTime, nil
-				}
-			}
+// Insert any nonexistent feeds & tags from the config into the database
+func InsertMissingFeeds(cfg *config.Config, db db.DB) error {
+	for _, cfgFeed := range cfg.Feeds {
+		f := &feed.Feed{
+			URL: cfgFeed.URL,
 		}
 
-	}
-}
-
-func (tf *TimestampFile) Update(fs FS, t *time.Time) error {
-	if f, err := fs.OpenFile(tf.Path, os.O_RDWR|os.O_CREATE, 0644); err != nil {
-		return err
-	} else {
-		if _, err := f.WriteString(t.Format(time.UnixDate)); err != nil {
-			return err
-		} else {
-			if err := f.Close(); err != nil {
-				return err
-			}
+		existingFeed, err := db.MatchingFeed(f)
+		if err != nil {
+			return errors.Wrap(err, "failed to get matching feed")
+		}
+		if existingFeed != nil {
+			continue
 		}
 
-		return nil
-	}
-}
-
-type AppConfig interface {
-	SetConfigName(string)
-	AddConfigPath(string)
-	ReadInConfig() error
-	Get(string) interface{}
-	GetString(string) string
-}
-
-type DB interface {
-	FirstOrCreate(interface{}, ...interface{}) DB
-	Find(interface{}, ...interface{}) DB
-	Order(interface{}, ...bool) DB
-	Close() error
-	Model(interface{}) DB
-	Update(...interface{}) DB
-}
-
-type GofeedURLParser interface {
-	ParseURL(string) (*gofeed.Feed, error)
-}
-
-type FeedItem struct {
-	gorm.Model
-	Title       string
-	Description string
-	Link        string
-	Published   time.Time
-	Url         string
-	AuthorName  string
-	AuthorEmail string
-	Hide        bool
-}
-
-type FeedFetcher interface {
-	FetchFeeds(AppConfig, GofeedURLParser, DB) error
-}
-
-// TODO: rename?
-type DefaultFeedFetcher struct{}
-
-func ConvertToFeedItem(goFeedItem *gofeed.Item, feedUrl string) *FeedItem {
-	var goFeedAuthorName string
-	var goFeedAuthorEmail string
-	if goFeedItem.Author != nil {
-		goFeedAuthorName = goFeedItem.Author.Name
-		goFeedAuthorEmail = goFeedItem.Author.Email
-	}
-
-	return &FeedItem{
-		Title:       goFeedItem.Title,
-		Description: goFeedItem.Description,
-		Link:        goFeedItem.Link,
-		Published:   *goFeedItem.PublishedParsed,
-		Url:         feedUrl,
-		AuthorName:  goFeedAuthorName,
-		AuthorEmail: goFeedAuthorEmail,
-	}
-}
-
-func ProcessGoFeedItem(db DB, goFeedItem *gofeed.Item, feedUrl string) {
-	fi := ConvertToFeedItem(goFeedItem, feedUrl)
-
-	var existingFeedItem FeedItem
-	db.FirstOrCreate(&existingFeedItem, fi)
-}
-
-func (dff *DefaultFeedFetcher) FetchFeeds(appConfig AppConfig, feedParser GofeedURLParser, db DB) error {
-	feedConfigs := appConfig.Get("feeds").([]interface{})
-	for _, feedConfig := range feedConfigs {
-		feedConfigMap := feedConfig.(map[string]interface{})
-		feedUrl, exists := feedConfigMap["url"].(string)
-		if !exists {
-			return errors.New("Feed config must contain url")
+		err = db.SaveFeed(f)
+		if err != nil {
+			return errors.Wrap(err, "failed to save feed")
 		}
 
-		if nextFeed, err := feedParser.ParseURL(feedUrl); err != nil {
-			fmt.Printf("Warning: could not retrieve feed from %v\n", feedUrl)
-		} else if len(nextFeed.Items) < 1 {
-			fmt.Printf("Warning: %v feed is empty\n", feedUrl)
-		} else {
-			for _, goFeedItem := range nextFeed.Items {
-				ProcessGoFeedItem(db, goFeedItem, feedUrl)
+		for _, cfgTagName := range cfgFeed.Tags {
+			t := &feed.Tag{
+				Name:   cfgTagName,
+				FeedID: f.ID,
 			}
 
+			existingTag, err := db.MatchingTag(t)
+			if err != nil {
+				return errors.Wrap(
+					err,
+					"failed to get matching tag")
+			}
+			if existingTag != nil {
+				continue
+			}
+
+			err = db.SaveTag(t)
+			if err != nil {
+				return errors.Wrap(err, "failed to save tag")
+			}
 		}
 	}
 
 	return nil
 }
 
-func FetchFeedsAfterDelay(appConfig AppConfig, fs FS, pt PersistentTimestamp, ff FeedFetcher, fp GofeedURLParser, db DB) error {
-	if lastUpdatedTime, err := pt.Parse(fs); err != nil {
-		return err
-	} else {
-		if d, err := time.ParseDuration(appConfig.GetString("feed_fetch_period")); err != nil {
-			return err
-		} else {
-			feedFetchTime := lastUpdatedTime.Add(d)
-			if delay, err := time.ParseDuration(appConfig.GetString("feed_fetch_delay")); err != nil {
-				return err
-			} else {
-				for {
-					if time.Now().After(feedFetchTime) {
-						if err := ff.FetchFeeds(appConfig, fp, db); err != nil {
-							return err
-						}
+func fetchFeeds(db db.DB, p parser.Parser) error {
+	feeds, err := db.Feeds()
+	if err != nil {
+		return errors.Wrap(err, "failed to get feeds")
+	}
 
-						currentTime := time.Now()
-						pt.Update(fs, &currentTime)
+	for _, feed := range feeds {
+		items, err := p.ParseURL(feed.URL)
+		if err != nil {
+			return errors.Wrap(err, "failed to parse feed")
+		}
 
-						return nil
-					} else {
-						time.Sleep(delay)
-					}
-				}
+		if len(items) == 0 {
+			log.Warn().Msgf("%s feed is empty", feed.URL)
+			continue
+		}
+
+		for _, item := range items {
+			// Don't insert item if there's an existing item with
+			// the same author, title & link
+			existingItem, err := db.MatchingItem(item)
+			if err != nil {
+				return errors.Wrap(
+					err,
+					"failed to get matching item")
 			}
+
+			if existingItem != nil {
+				log.Info().Msgf("skipping: %s", item)
+				continue
+			}
+
+			item.FeedID = feed.ID
+
+			err = db.SaveItem(item)
+			if err != nil {
+				return errors.Wrap(err, "failed to save item")
+			}
+
+			log.Debug().Msgf("inserted: %s", item)
 		}
 	}
+
+	return nil
+}
+
+// Periodically parse feeds from the DB and insert any nonexistent items,
+// subject to the fetch period from the given config
+func WatchFeeds(cfg *config.Config, dbCfg *config.DBConfig) error {
+	db, err := db.New(dbCfg)
+	if err != nil {
+		return errors.Wrap(err, "failed to create db client")
+	}
+
+	defer db.Close()
+
+	parser, err := parser.New()
+	if err != nil {
+		return errors.Wrap(err, "failed to create feed parser")
+	}
+
+	fetchPeriod := cfg.FetchPeriod
+	lastFetched, err := db.Timestamp()
+	if err != nil || lastFetched == nil {
+		return errors.Wrap(err, "failed to get timestamp")
+	}
+
+	for {
+		wait := fetchPeriod - time.Since(*lastFetched)
+		if wait > 0 {
+			timer := time.NewTimer(wait)
+			select {
+			case <-timer.C:
+				break
+			}
+		}
+
+		err := fetchFeeds(db, parser)
+		if err != nil {
+			return errors.Wrap(err, "failed to fetch feeds")
+		}
+
+		now := time.Now()
+		lastFetched = &now
+		err = db.SaveTimestamp(lastFetched)
+		if err != nil {
+			return errors.Wrap(err, "failed to update timestamp")
+		}
+	}
+
+	return nil
 }

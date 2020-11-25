@@ -1,21 +1,36 @@
 # gonews
 A simple RSS feed aggregator, written in Go
 
+# Setup
+
+Copy ```config.toml.example``` to ```.config/config.toml```, edit as needed
+
 # How-To
 
 Run locally:
 
 ```
-docker build -t gonews .
-docker run -p 8080:8080 -it gonews
+docker-compose up
 ```
 
 The web app is then accessible at localhost:8080
 
 # Development
 
-To build/run from a local application directory:
+To get a shell in the container, with dev tools available, run:
 
 ```
-docker run -e GONEWS_ENV=DEV -p 8080:8080 -it -v /local/path/to/gonews:/go/src/gonews gonews
+docker-compose -f docker-compose-dev.yml up
+```
+
+Then run the following to get the container name:
+
+```
+docker-compose ps
+```
+
+Then run the following to get a shell in the container:
+
+```
+docker exec -it <container name> /usr/bin/env bash
 ```
