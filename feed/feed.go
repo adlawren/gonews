@@ -3,6 +3,7 @@ package feed
 import (
 	"errors"
 	"fmt"
+	"html"
 	"time"
 
 	"github.com/mmcdole/gofeed"
@@ -75,8 +76,8 @@ func (i *Item) FromGofeedItem(gfi *gofeed.Item) error {
 	var name string
 	var email string
 	if gfi.Author != nil {
-		name = gfi.Author.Name
-		email = gfi.Author.Email
+		name = html.EscapeString(gfi.Author.Name)
+		email = html.EscapeString(gfi.Author.Email)
 	}
 
 	var published time.Time
@@ -88,9 +89,9 @@ func (i *Item) FromGofeedItem(gfi *gofeed.Item) error {
 		Name:  name,
 		Email: email,
 	}
-	i.Title = gfi.Title
-	i.Description = gfi.Description
-	i.Link = gfi.Link
+	i.Title = html.EscapeString(gfi.Title)
+	i.Description = html.EscapeString(gfi.Description)
+	i.Link = html.EscapeString(gfi.Link)
 	i.Published = published
 
 	return nil

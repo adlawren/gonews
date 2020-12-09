@@ -4,13 +4,6 @@
 </div>
 
 <script>
-  // Source: https://stackoverflow.com/questions/6234773/can-i-escape-html-special-chars-in-javascript/48054293#48054293
-  function escapeHTML(unsafeText) {
-      var tmpElement = document.createElement('div');
-      tmpElement.innerText = unsafeText;
-      return tmpElement.innerHTML;
-  }
-
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
       if (this.readyState != 4) {
@@ -31,7 +24,7 @@
           }
 
           var itemElement = document.createElement('div');
-          itemElement.innerHTML = `<h3>${escapeHTML(item["title"])}</h3><h4>${escapeHTML(item["name"])}, ${escapeHTML(item["published"])}, <a href="${escapeHTML(item["link"])}">link</a></h4>${escapeHTML(item["description"])}<br/><form action="/hide" method="post"><input type="number" hidden="true" readonly="true" name="ID" value="${escapeHTML(item["ID"])}"><input type="hidden" name="csrf_token" value="{{ .token }}"><input type="submit" value="Hide"></form>`;
+          itemElement.innerHTML = `<h3>${item["title"]}</h3><h4>${item["name"]}, ${item["published"]}, <a href="${item["link"]}">link</a></h4>${item["description"]}<br/><form action="/hide" method="post"><input type="number" hidden="true" readonly="true" name="ID" value="${item["ID"]}"><input type="hidden" name="csrf_token" value="{{ .token }}"><input type="submit" value="Hide"></form>`;
           document.getElementById("items").appendChild(itemElement);
       }
   }
