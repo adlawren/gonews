@@ -11,12 +11,13 @@ import (
 
 // Feed contains the data associated with a feed stored in the database
 type Feed struct {
-	ID  uint
-	URL string
+	ID         uint
+	URL        string
+	FetchLimit uint
 }
 
 func (f Feed) String() string {
-	return fmt.Sprintf("Feed{URL: %s}", f.URL)
+	return fmt.Sprintf("Feed{URL: %s, FetchLimit: %d}", f.URL, f.FetchLimit)
 }
 
 // Tag contains the data associated with a feed tag stored in the database
