@@ -17,8 +17,9 @@ type Config struct {
 // FeedConfig contains the values associated with each feed, parsed from the
 // config file
 type FeedConfig struct {
-	URL  string
-	Tags []string
+	URL        string
+	Tags       []string
+	FetchLimit uint
 }
 
 // DBConfig contains the values needed to connect to the database
@@ -84,7 +85,7 @@ func (vc *viperConfig) Feeds() ([]*FeedConfig, error) {
 	if !ok {
 		return feeds, errors.Errorf(
 			"invalid feed list type: %T",
-			feedInterfaces)
+			viper.Get("feeds"))
 	}
 
 	for _, feedInterface := range feedInterfaces {
@@ -94,7 +95,7 @@ func (vc *viperConfig) Feeds() ([]*FeedConfig, error) {
 		if !ok {
 			return feeds, errors.Errorf(
 				"invalid feed type: %T",
-				feedMap)
+				feedInterface)
 		}
 
 		feedURL, exists := feedMap["url"]
@@ -121,7 +122,7 @@ func (vc *viperConfig) Feeds() ([]*FeedConfig, error) {
 		if !ok {
 			return feeds, errors.Errorf(
 				"invalid feed tags type: %T",
-				tagInterfaces)
+				feedTags)
 		}
 
 		var tags []string
@@ -137,6 +138,22 @@ func (vc *viperConfig) Feeds() ([]*FeedConfig, error) {
 		}
 
 		nextFeed.Tags = tags
+
+		feedFetchLimit, exists := feedMap["fetch_limit"]
+		if !exists {
+			feeds = append(feeds, &nextFeed)
+			continue
+		}
+
+		fetchLimit, ok := feedFetchLimit.(int64)
+		if !ok {
+			return feeds, errors.Errorf(
+				"invalid feed fetch limit type: %T",
+				feedFetchLimit)
+		}
+
+		nextFeed.FetchLimit = uint(fetchLimit)
+
 		feeds = append(feeds, &nextFeed)
 	}
 

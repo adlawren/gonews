@@ -15,7 +15,8 @@ import (
 func InsertMissingFeeds(cfg *config.Config, db db.DB) error {
 	for _, cfgFeed := range cfg.Feeds {
 		f := &feed.Feed{
-			URL: cfgFeed.URL,
+			URL:        cfgFeed.URL,
+			FetchLimit: cfgFeed.FetchLimit,
 		}
 
 		existingFeed, err := db.MatchingFeed(f)
@@ -30,6 +31,8 @@ func InsertMissingFeeds(cfg *config.Config, db db.DB) error {
 		if err != nil {
 			return errors.Wrap(err, "failed to save feed")
 		}
+
+		log.Debug().Msgf("inserted: %s", f)
 
 		for _, cfgTagName := range cfgFeed.Tags {
 			t := &feed.Tag{
@@ -51,6 +54,8 @@ func InsertMissingFeeds(cfg *config.Config, db db.DB) error {
 			if err != nil {
 				return errors.Wrap(err, "failed to save tag")
 			}
+
+			log.Debug().Msgf("inserted: %s", t)
 		}
 	}
 
@@ -72,6 +77,10 @@ func fetchFeeds(db db.DB, p parser.Parser) error {
 		if len(items) == 0 {
 			log.Warn().Msgf("%s feed is empty", feed.URL)
 			continue
+		}
+
+		if feed.FetchLimit != 0 {
+			items = items[:feed.FetchLimit]
 		}
 
 		for _, item := range items {

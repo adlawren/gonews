@@ -11,8 +11,10 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-# Ignore binary
-gonews
+# Ignore binaries
+gn
+gnctl
+gnrss
 
 # Ignore generated mocks
 mock_db
