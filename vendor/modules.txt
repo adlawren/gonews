@@ -6,6 +6,8 @@ github.com/andybalholm/cascadia
 github.com/davecgh/go-spew/spew
 # github.com/fsnotify/fsnotify v1.4.7
 github.com/fsnotify/fsnotify
+# github.com/go-sql-driver/mysql v1.5.0
+github.com/go-sql-driver/mysql
 # github.com/golang/mock v1.4.4
 github.com/golang/mock/gomock
 github.com/golang/mock/mockgen
@@ -25,6 +27,10 @@ github.com/hashicorp/hcl/json/token
 github.com/json-iterator/go
 # github.com/justinas/nosurf v1.1.1
 github.com/justinas/nosurf
+# github.com/lib/pq v1.9.0
+github.com/lib/pq
+github.com/lib/pq/oid
+github.com/lib/pq/scram
 # github.com/magiconair/properties v1.8.1
 github.com/magiconair/properties
 # github.com/mattn/go-sqlite3 v2.0.3+incompatible
@@ -52,6 +58,7 @@ github.com/pkg/errors
 github.com/pmezard/go-difflib/difflib
 # github.com/pressly/goose v2.6.0+incompatible
 github.com/pressly/goose
+github.com/pressly/goose/cmd/goose
 # github.com/rs/zerolog v1.19.0
 github.com/rs/zerolog
 github.com/rs/zerolog/internal/cbor
@@ -72,6 +79,10 @@ github.com/spf13/viper
 github.com/stretchr/testify/assert
 # github.com/subosito/gotenv v1.2.0
 github.com/subosito/gotenv
+# github.com/ziutek/mymysql v1.5.4
+github.com/ziutek/mymysql/godrv
+github.com/ziutek/mymysql/mysql
+github.com/ziutek/mymysql/native
 # golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 golang.org/x/net/html
 golang.org/x/net/html/atom

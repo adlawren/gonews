@@ -19,3 +19,7 @@ mock_db
 mock_parser
 
 .config
+
+gn
+gnctl
+gnrss
