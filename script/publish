@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
-docker-compose build
-docker tag gonews_web:latest adlawren/gonews:unstable
-docker push adlawren/gonews:unstable
+set -e
+
+sudo docker-compose build
+sudo docker login -u adlawren
+sudo docker tag gonews_web:latest adlawren/gonews:unstable
+sudo docker push adlawren/gonews:unstable
