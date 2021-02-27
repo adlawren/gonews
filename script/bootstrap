@@ -1,3 +1,9 @@
 #!/usr/bin/env bash
 
+# Install security updates
+# Source: https://askubuntu.com/questions/194/how-can-i-install-just-security-updates-from-the-command-line/217999#217999
+apt-get -s dist-upgrade | grep "^Inst" | \
+    grep -i securi | awk -F " " {'print $2'} | \
+    xargs apt-get install
+
 go install -mod=vendor -v ./...

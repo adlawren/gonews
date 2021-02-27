@@ -1,0 +1,13 @@
+version: '3'
+services:
+  web:
+    environment:
+      GONEWS_TLS: 'true'
+    secrets:
+      - tls_cert
+      - tls_key
+secrets:
+  tls_cert:
+    file: /path/to/mycert.crt
+  tls_key:
+    file: /path/to/mykey.key

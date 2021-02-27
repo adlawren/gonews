@@ -10,6 +10,7 @@ import (
 	"gonews/lib"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
 	"text/template"
 
@@ -19,7 +20,14 @@ import (
 )
 
 const (
-	envDebug = "GONEWS_DEBUG"
+	envDebug    = "GONEWS_DEBUG"
+	envTLS      = "GONEWS_TLS"
+	secretsPath = "/var/run/secrets"
+)
+
+var (
+	certPath = path.Join(secretsPath, "tls_cert")
+	keyPath  = path.Join(secretsPath, "tls_key")
 )
 
 var cfg *config.Config
@@ -119,14 +127,15 @@ func hideHandlerFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	debug := flag.Bool("debug", false, "enable debug logging")
+	debugEnabled := flag.Bool("debug", false, "enable debug logging")
+	tlsEnabled := flag.Bool("tls", false, "use tls")
 	confDir := flag.String("conf-dir", ".config", "config directory path")
 	dataDir := flag.String("data-dir", "/data/gonews", "data directory path")
 	migrationsDir := flag.String("migrations-dir", "db/migrations", "DB migrations directory path")
 
 	flag.Parse()
 
-	if *debug || os.Getenv(envDebug) == "true" {
+	if *debugEnabled || os.Getenv(envDebug) == "true" {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
@@ -185,6 +194,15 @@ func main() {
 		}
 	}()
 
-	err = http.ListenAndServe(":8080", nil)
+	if *tlsEnabled || os.Getenv(envTLS) == "true" {
+		err = http.ListenAndServeTLS(
+			":8080",
+			certPath,
+			keyPath,
+			nil,
+		)
+	} else {
+		err = http.ListenAndServe(":8080", nil)
+	}
 	log.Error().Err(err).Msg("Server failed")
 }

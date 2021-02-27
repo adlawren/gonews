@@ -1,4 +1,5 @@
 # gonews
+
 A simple RSS feed aggregator, written in Go
 
 # Setup
@@ -15,22 +16,18 @@ docker-compose up
 
 The web app is then accessible at localhost:8080
 
+## TLS
+
+To run locally with TLS enabled, edit the cert and key file paths in `docker-compose.tls.yml` accordingly, then run:
+
+```
+sudo docker-compose -f docker-compose.yml -f docker-compose.tls.yml up
+```
+
 # Development
 
-To get a shell in the container, with dev tools available, run:
+To get a shell in the container, run:
 
 ```
-docker-compose -f docker-compose-dev.yml up
-```
-
-Then run the following to get the container name:
-
-```
-docker-compose ps
-```
-
-Then run the following to get a shell in the container:
-
-```
-docker exec -it <container name> /usr/bin/env bash
+sudo docker-compose -f docker-compose.yml -f docker-compose.dev.yml run --service-ports --rm web bash
 ```
