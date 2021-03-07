@@ -9,6 +9,8 @@
 package tools
 
 import (
+	_ "github.com/go-delve/delve/cmd/dlv"
 	_ "github.com/golang/mock/mockgen"
 	_ "github.com/pressly/goose/cmd/goose"
+	_ "github.com/securego/gosec/cmd/gosec"
 )

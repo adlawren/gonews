@@ -8,6 +8,7 @@ import (
 	"gonews/db"
 	"gonews/feed"
 	"gonews/lib"
+	"gonews/middleware"
 	"net/http"
 	"os"
 	"path"
@@ -20,9 +21,10 @@ import (
 )
 
 const (
+	envAuth     = "GONEWS_AUTH"
 	envDebug    = "GONEWS_DEBUG"
 	envTLS      = "GONEWS_TLS"
-	secretsPath = "/var/run/secrets"
+	secretsPath = "/var/run/secrets" // #nosec G101
 )
 
 var (
@@ -102,7 +104,12 @@ func hideHandlerFunc(w http.ResponseWriter, r *http.Request) {
 
 	defer db.Close()
 
-	r.ParseForm()
+	err = r.ParseForm()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to parse form")
+		return
+	}
+
 	id, err := strconv.ParseUint(r.PostFormValue("ID"), 10, 64)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed parse form ID")
@@ -127,8 +134,9 @@ func hideHandlerFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	authEnabled := flag.Bool("auth", false, "enable user authentication")
 	debugEnabled := flag.Bool("debug", false, "enable debug logging")
-	tlsEnabled := flag.Bool("tls", false, "use tls")
+	tlsEnabled := flag.Bool("tls", false, "enable TLS")
 	confDir := flag.String("conf-dir", ".config", "config directory path")
 	dataDir := flag.String("data-dir", "/data/gonews", "data directory path")
 	migrationsDir := flag.String("migrations-dir", "db/migrations", "DB migrations directory path")
@@ -162,6 +170,7 @@ func main() {
 	dbCfg = &config.DBConfig{
 		DSN: fmt.Sprintf("file:%s/db.sqlite3", *dataDir),
 	}
+	config.SetDBConfigInst(dbCfg)
 
 	adb, err := db.New(dbCfg)
 	if err != nil {
@@ -183,9 +192,10 @@ func main() {
 		return
 	}
 
-	http.Handle("/", nosurf.New(http.HandlerFunc(indexHandlerFunc)))
-	http.Handle("/hide", http.HandlerFunc(hideHandlerFunc))
-	http.Handle("/api/v1/items", http.HandlerFunc(itemsHandlerFunc))
+	mux := http.NewServeMux()
+	mux.Handle("/", nosurf.New(http.HandlerFunc(indexHandlerFunc)))
+	mux.Handle("/hide", http.HandlerFunc(hideHandlerFunc))
+	mux.Handle("/api/v1/items", http.HandlerFunc(itemsHandlerFunc))
 
 	go func() {
 		for {
@@ -194,15 +204,23 @@ func main() {
 		}
 	}()
 
+	middlewareFuncs := []middleware.MiddlewareFunc{}
+	if *authEnabled || os.Getenv(envAuth) == "true" {
+		middlewareFuncs = append(
+			middlewareFuncs,
+			middleware.AuthMiddlewareFunc)
+	}
+
 	if *tlsEnabled || os.Getenv(envTLS) == "true" {
 		err = http.ListenAndServeTLS(
 			":8080",
 			certPath,
 			keyPath,
-			nil,
-		)
+			middleware.Wrap(mux, middlewareFuncs...))
 	} else {
-		err = http.ListenAndServe(":8080", nil)
+		err = http.ListenAndServe(
+			":8080",
+			middleware.Wrap(mux, middlewareFuncs...))
 	}
 	log.Error().Err(err).Msg("Server failed")
 }

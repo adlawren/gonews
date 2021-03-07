@@ -5,6 +5,7 @@ import (
 	"gonews/config"
 	"gonews/feed"
 	"gonews/timestamp"
+	"gonews/user"
 	"os"
 	"time"
 
@@ -20,6 +21,9 @@ type DB interface {
 	Migrate(string) error
 	Timestamp() (*time.Time, error)
 	SaveTimestamp(*time.Time) error
+	Users() ([]*user.User, error)
+	MatchingUser(*user.User) (*user.User, error)
+	SaveUser(*user.User) error
 	Feeds() ([]*feed.Feed, error)
 	MatchingFeed(*feed.Feed) (*feed.Feed, error)
 	SaveFeed(*feed.Feed) error
@@ -43,6 +47,10 @@ func New(cfg *config.DBConfig) (DB, error) {
 
 type sqlDB struct {
 	db *sql.DB
+}
+
+func scanUser(rows *sql.Rows, u *user.User) error {
+	return rows.Scan(&u.ID, &u.Username, &u.PasswordHash)
 }
 
 func scanFeed(rows *sql.Rows, f *feed.Feed) error {
@@ -224,6 +232,160 @@ func (sdb *sqlDB) SaveTimestamp(t *time.Time) error {
 	}
 
 	return errors.Wrap(err, "failed to save timestamp")
+}
+
+func (sdb *sqlDB) Users() ([]*user.User, error) {
+	var users []*user.User
+
+	rows, err := sdb.db.Query("select * from users;")
+	defer rows.Close()
+	if err != nil {
+		return users, errors.Wrap(err, "failed to execute query")
+	}
+
+	for rows.Next() {
+		var user user.User
+		err = scanUser(rows, &user)
+		if err != nil {
+			return users, errors.Wrap(err, "failed to scan user")
+		}
+
+		users = append(users, &user)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return users, errors.Wrap(err, "cursor error")
+	}
+
+	return users, nil
+}
+
+func (sdb *sqlDB) MatchingUser(u *user.User) (*user.User, error) {
+	stmt, err := sdb.db.Prepare("select * from users where username=?;")
+	defer stmt.Close()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to prepare statement")
+	}
+
+	rows, err := stmt.Query(u.Username)
+	defer rows.Close()
+	if err != nil {
+		return nil, errors.Wrap(
+			err,
+			"failed to execute prepared statement")
+	}
+
+	if !rows.Next() {
+		return nil, nil
+	}
+
+	var user user.User
+	err = scanUser(rows, &user)
+	if err != nil {
+		return &user, errors.Wrap(err, "failed to scan user")
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, errors.Wrap(err, "cursor error")
+	}
+
+	return &user, nil
+}
+
+func (sdb *sqlDB) updateUser(u *user.User) error {
+	stmt, err := sdb.db.Prepare("update users set username=?, password_hash=? where id=?;")
+	defer stmt.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to prepare statement")
+	}
+
+	res, err := stmt.Exec(u.Username, u.PasswordHash, u.ID)
+	if err != nil {
+		return errors.Wrap(err, "failed to execute prepared statement")
+	}
+
+	count, err := res.RowsAffected()
+	if err != nil {
+		return errors.Wrap(err, "failed to get affected row count")
+	}
+	if count != 1 {
+		return errors.New("expected one row to be affected")
+	}
+
+	return nil
+}
+
+func (sdb *sqlDB) insertUser(u *user.User) error {
+	stmt, err := sdb.db.Prepare("insert into users (username, password_hash) values (?, ?);")
+	defer stmt.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to prepare statement")
+	}
+
+	res, err := stmt.Exec(u.Username, u.PasswordHash)
+	if err != nil {
+		return errors.Wrap(err, "failed to execute prepared statement")
+	}
+
+	count, err := res.RowsAffected()
+	if err != nil {
+		return errors.Wrap(err, "failed to get affected row count")
+	}
+	if count != 1 {
+		return errors.New("expected one row to be affected")
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return errors.Wrap(err, "failed to get last inserted id")
+	}
+
+	u.ID = uint(id)
+
+	return nil
+}
+
+func (sdb *sqlDB) SaveUser(u *user.User) error {
+	stmt, err := sdb.db.Prepare("select count(*) from users where id=?;")
+	defer stmt.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to prepare statement")
+	}
+
+	rows, err := stmt.Query(u.ID)
+	defer rows.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to execute prepared statement")
+	}
+
+	var count int
+	if !rows.Next() {
+		return errors.New("cursor is empty")
+	}
+	err = rows.Scan(&count)
+	if err != nil {
+		return errors.Wrap(err, "failed to scan count")
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return errors.Wrap(err, "cursor error")
+	}
+
+	err = rows.Close()
+	if err != nil {
+		return errors.Wrap(err, "failed to close cursor")
+	}
+
+	if count != 0 {
+		err = sdb.updateUser(u)
+	} else {
+		err = sdb.insertUser(u)
+	}
+
+	return errors.Wrap(err, "failed to save user")
 }
 
 func (sdb *sqlDB) Feeds() ([]*feed.Feed, error) {

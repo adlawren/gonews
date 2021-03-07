@@ -7,6 +7,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	dbConfigInst *DBConfig
+)
+
 // Config contains the values parsed from the config file
 type Config struct {
 	AppTitle    string
@@ -26,6 +30,17 @@ type FeedConfig struct {
 // Note: currently not parsed from the config file
 type DBConfig struct {
 	DSN string
+}
+
+// SetDBConfigInst assigns the global database configuration instance to the
+// given config
+func SetDBConfigInst(dbCfg *DBConfig) {
+	dbConfigInst = dbCfg
+}
+
+// DBConfigInst returns the global database configuration instance
+func DBConfigInst() *DBConfig {
+	return dbConfigInst
 }
 
 // New creates an instance of Config by parsing the given config file

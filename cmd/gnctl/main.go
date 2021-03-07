@@ -5,16 +5,31 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"gonews/auth"
 	"gonews/config"
 	"gonews/db"
 	"gonews/feed"
 	"gonews/parser"
+	"gonews/user"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
+
+func printUsers(users ...*user.User) error {
+	for _, user := range users {
+		userBytes, err := json.Marshal(user)
+		if err != nil {
+			return errors.Wrap(err, "failed to marshal json")
+		}
+		fmt.Println(string(userBytes[:]))
+	}
+
+	return nil
+}
 
 func printFeeds(feeds ...*feed.Feed) error {
 	for _, feed := range feeds {
@@ -62,6 +77,24 @@ func scanLines() []string {
 	}
 
 	return lines
+}
+
+func scanUsers() ([]*user.User, error) {
+	lines := scanLines()
+
+	var users []*user.User
+	for _, line := range lines {
+		var u user.User
+
+		err := json.Unmarshal([]byte(line), &u)
+		if err != nil {
+			return users, errors.Wrap(err, "failed to unmarshal user")
+		}
+
+		users = append(users, &u)
+	}
+
+	return users, nil
 }
 
 func scanFeeds() ([]*feed.Feed, error) {
@@ -118,6 +151,17 @@ func scanItems() ([]*feed.Item, error) {
 	return items, nil
 }
 
+func saveUsers(db db.DB, users []*user.User) error {
+	for _, user := range users {
+		err := db.SaveUser(user)
+		if err != nil {
+			return errors.Wrap(err, "failed to save user")
+		}
+	}
+
+	return nil
+}
+
 func saveFeeds(db db.DB, feeds []*feed.Feed) error {
 	for _, feed := range feeds {
 		err := db.SaveFeed(feed)
@@ -158,16 +202,21 @@ func main() {
 	migrateDB := flag.Bool("migrate-db", false, "apply DB migrations")
 	feedURL := flag.String("parse-url", "", "parse items from URL")
 	showTimestamp := flag.Bool("timestamp", false, "show timestamp")
+	showUsers := flag.Bool("users", false, "show users")
 	showFeeds := flag.Bool("feeds", false, "show feeds")
 	showTags := flag.Bool("tags", false, "show tags")
 	showItems := flag.Bool("items", false, "show items")
 	tagName := flag.String("items-from-tag", "", "show items from tag name")
 	feedID := flag.Uint("items-from-feed", 0, "show items from feed ID")
 	itemID := flag.Uint("item", 0, "show item with given ID")
+	hashPassword := flag.String("hash-password", "", "print the hash of the given password")
+	testAuth := flag.String("test-auth", "", "validate the given authentication credentials; ex. 'some_user:some_password'")
+	matchingUser := flag.String("matching-user", "", "show matching user, given serialized user fields")
 	matchingFeed := flag.String("matching-feed", "", "show matching feed, given serialized feed fields")
 	matchingTag := flag.String("matching-tag", "", "show matching tag, given serialized tag fields")
 	matchingItem := flag.String("matching-item", "", "show matching item, given serialized item fields")
 	upsertTimestamp := flag.String("upsert-timestamp", "", "upsert the timestamp using the given time")
+	upsertUsers := flag.Bool("upsert-users", false, "upsert the given serialized users read from stdin, one per line")
 	upsertFeeds := flag.Bool("upsert-feeds", false, "upsert the given serialized feeds read from stdin, one per line")
 	upsertTags := flag.Bool("upsert-tags", false, "upsert the given serialized tags read from stdin, one per line")
 	upsertItems := flag.Bool("upsert-items", false, "upsert the given serialized items read from stdin, one per line")
@@ -207,6 +256,20 @@ func main() {
 		}
 
 		fmt.Println(t.Format(time.RFC3339))
+	}
+
+	if *showUsers {
+		users, err := adb.Users()
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to get users")
+			return
+		}
+
+		err = printUsers(users...)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to print users")
+			return
+		}
 	}
 
 	if *showFeeds {
@@ -289,6 +352,52 @@ func main() {
 		err = printItems(item)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to print item")
+			return
+		}
+	}
+
+	if len(*hashPassword) > 0 {
+		hash, err := auth.Hash(*hashPassword)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to hash password")
+			return
+		}
+
+		fmt.Println(hash)
+	}
+
+	if len(*testAuth) > 0 {
+		res := strings.Split(*testAuth, ":")
+		username := res[0]
+		password := res[1]
+		isValid, err := auth.IsValid(username, password, adb)
+
+		// TODO: fix so that it can distinguish between an actual error and an 'invalid creds' error
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to validate creds")
+			return
+		}
+
+		fmt.Println(isValid)
+	}
+
+	if len(*matchingUser) > 0 {
+		var user user.User
+		err := json.Unmarshal([]byte(*matchingUser), &user)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to unmarshal user")
+			return
+		}
+
+		match, err := adb.MatchingUser(&user)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to get matching user")
+			return
+		}
+
+		err = printUsers(match)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to print user")
 			return
 		}
 	}
@@ -386,6 +495,20 @@ func main() {
 		err = adb.SaveTimestamp(&t)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to save timestamp")
+			return
+		}
+	}
+
+	if *upsertUsers {
+		users, err := scanUsers()
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to scan users")
+			return
+		}
+
+		err = saveUsers(adb, users)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to upsert users")
 			return
 		}
 	}

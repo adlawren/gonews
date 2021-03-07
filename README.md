@@ -21,7 +21,10 @@ The web app is then accessible at localhost:8080
 To run locally with TLS enabled, edit the cert and key file paths in `docker-compose.tls.yml` accordingly, then run:
 
 ```
-sudo docker-compose -f docker-compose.yml -f docker-compose.tls.yml up
+sudo docker-compose \
+  -f docker-compose.yml \
+  -f docker-compose.tls.yml \
+  up
 ```
 
 # Development
@@ -29,5 +32,8 @@ sudo docker-compose -f docker-compose.yml -f docker-compose.tls.yml up
 To get a shell in the container, run:
 
 ```
-sudo docker-compose -f docker-compose.yml -f docker-compose.dev.yml run --service-ports --rm web bash
+sudo docker-compose \
+  -f docker-compose.yml \
+  -f docker-compose.dev.yml \
+  run --service-ports --rm web bash
 ```

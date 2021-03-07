@@ -1,28 +1,24 @@
 package lib
 
 import (
-	"fmt"
 	"gonews/config"
-	"gonews/db"
 	"gonews/feed"
 	"gonews/rss"
-	"os"
-	"path/filepath"
-	"strings"
+	"gonews/test"
 	"testing"
 	"time"
 
 	"github.com/mmcdole/gofeed"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 )
 
-func testConfig(t *testing.T) (*config.Config, error) {
+var (
+	migrationsDir = "../db/migrations"
+)
+
+func testConfig(t *testing.T) *config.Config {
 	d, err := time.ParseDuration("10s")
-	if err != nil {
-		return nil, err
-	}
+	assert.NoError(t, err)
 
 	return &config.Config{
 		AppTitle: "Test Title",
@@ -35,12 +31,7 @@ func testConfig(t *testing.T) (*config.Config, error) {
 			},
 		},
 		FetchPeriod: d,
-	}, nil
-}
-
-var testDBConfig *config.DBConfig = &config.DBConfig{
-	DSN: fmt.Sprintf("file:/tmp/gonews/test/%d/db.sqlite3",
-		time.Now().Unix()),
+	}
 }
 
 var expectedFeeds []*feed.Feed = []*feed.Feed{
@@ -98,44 +89,11 @@ func expectedItems() []*feed.Item {
 	}
 }
 
-func initDB(t *testing.T, dbCfg *config.DBConfig) (db.DB, error) {
-	log.Info().Msgf("Initializing test DB: %s", dbCfg.DSN)
-	if !strings.HasPrefix(dbCfg.DSN, "file:") {
-		return nil, errors.New(fmt.Sprintf(
-			"invalid DSN (%s), expected local file", dbCfg.DSN))
-	}
-
-	path := strings.TrimPrefix(dbCfg.DSN, "file:")
-	_, err := os.Stat(path)
-	if err != nil && os.IsNotExist(err) {
-		err := os.MkdirAll(filepath.Dir(path), os.ModeDir)
-		if err != nil {
-			return nil, err
-		}
-
-		_, err = os.Create(path)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	adb, err := db.New(dbCfg)
-	if err != nil {
-		return nil, err
-	}
-
-	err = adb.Migrate("../db/migrations")
-	return adb, errors.Wrap(err, "failed to migrate DB")
-}
-
 func TestWatchFeeds(t *testing.T) {
-	db, err := initDB(t, testDBConfig)
-	assert.NoError(t, err)
+	dbCfg, db := test.InitDB(t, migrationsDir)
+	testCfg := testConfig(t)
 
-	testCfg, err := testConfig(t)
-	assert.NoError(t, err)
-
-	err = InsertMissingFeeds(testCfg, db)
+	err := InsertMissingFeeds(testCfg, db)
 	assert.NoError(t, err)
 
 	go func() {
@@ -143,7 +101,7 @@ func TestWatchFeeds(t *testing.T) {
 	}()
 
 	go func() {
-		assert.NoError(t, WatchFeeds(testCfg, testDBConfig))
+		assert.NoError(t, WatchFeeds(testCfg, dbCfg))
 	}()
 
 	d, err := time.ParseDuration("30s")
