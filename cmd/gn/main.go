@@ -204,7 +204,9 @@ func main() {
 		}
 	}()
 
-	middlewareFuncs := []middleware.MiddlewareFunc{}
+	middlewareFuncs := []middleware.MiddlewareFunc{
+		middleware.LogMiddlewareFunc,
+	}
 	if *authEnabled || os.Getenv(envAuth) == "true" {
 		middlewareFuncs = append(
 			middlewareFuncs,
