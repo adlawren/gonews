@@ -8,6 +8,11 @@ github.com/cosiner/argv
 github.com/cpuguy83/go-md2man/md2man
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
+# github.com/didip/tollbooth v4.0.2+incompatible
+github.com/didip/tollbooth
+github.com/didip/tollbooth/errors
+github.com/didip/tollbooth/libstring
+github.com/didip/tollbooth/limiter
 # github.com/fsnotify/fsnotify v1.4.7
 github.com/fsnotify/fsnotify
 # github.com/go-delve/delve v1.6.0
@@ -112,6 +117,8 @@ github.com/nbutton23/zxcvbn-go/match
 github.com/nbutton23/zxcvbn-go/matching
 github.com/nbutton23/zxcvbn-go/scoring
 github.com/nbutton23/zxcvbn-go/utils/math
+# github.com/patrickmn/go-cache v2.1.0+incompatible
+github.com/patrickmn/go-cache
 # github.com/pelletier/go-toml v1.2.0
 github.com/pelletier/go-toml
 # github.com/peterh/liner v0.0.0-20170317030525-88609521dc4b
@@ -198,6 +205,8 @@ golang.org/x/text/language
 golang.org/x/text/runes
 golang.org/x/text/transform
 golang.org/x/text/unicode/norm
+# golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
+golang.org/x/time/rate
 # golang.org/x/tools v0.0.0-20200331202046-9d5940d49312
 golang.org/x/tools/go/gcexportdata
 golang.org/x/tools/go/internal/gcimporter

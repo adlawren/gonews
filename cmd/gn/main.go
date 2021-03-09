@@ -206,6 +206,7 @@ func main() {
 
 	middlewareFuncs := []middleware.MiddlewareFunc{
 		middleware.LogMiddlewareFunc,
+		middleware.ThrottleMiddlewareFunc,
 	}
 	if *authEnabled || os.Getenv(envAuth) == "true" {
 		middlewareFuncs = append(
