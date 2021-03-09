@@ -1,13 +1,22 @@
 package middleware
 
-import "net/http"
+import (
+	"net/http"
 
-type MiddlewareFunc func(http.Handler) http.Handler
+	"github.com/pkg/errors"
+)
 
-func Wrap(handler http.Handler, middleware ...MiddlewareFunc) http.Handler {
+type MiddlewareFunc func(http.Handler) (http.Handler, error)
+
+func Wrap(handler http.Handler, middleware ...MiddlewareFunc) (http.Handler, error) {
 	if len(middleware) == 0 {
-		return handler
+		return handler, nil
 	}
 
-	return middleware[0](Wrap(handler, middleware[1:]...))
+	h, err := Wrap(handler, middleware[1:]...)
+	if err != nil {
+		return h, errors.Wrap(err, "failed to wrap handler")
+	}
+
+	return middleware[0](h)
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func AuthMiddlewareFunc(h http.Handler) http.Handler {
+func AuthMiddlewareFunc(h http.Handler) (http.Handler, error) {
 	var handlerFunc http.HandlerFunc = func(
 		w http.ResponseWriter,
 		r *http.Request) {
@@ -53,5 +53,5 @@ func AuthMiddlewareFunc(h http.Handler) http.Handler {
 		}
 	}
 
-	return handlerFunc
+	return handlerFunc, nil
 }

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -14,7 +15,8 @@ func TestWrapReturnsHandlerWhenNoMiddlewareProvided(t *testing.T) {
 	responseText := "mock response"
 	handler := mockHandler(responseText)
 
-	wrappedHandler := Wrap(handler)
+	wrappedHandler, err := Wrap(handler)
+	assert.NoError(t, err)
 	assert.NotNil(t, wrappedHandler)
 
 	req := httptest.NewRequest("GET", "http://example.com/", nil)
@@ -41,7 +43,8 @@ func TestWrapReturnsWrappedHandlerWhenMiddlewareProvided(t *testing.T) {
 	middleware3ResponseText := "middleware3"
 	middleware3 := mockMiddleware(middleware3ResponseText)
 
-	wrappedHandler := Wrap(handler, middleware1, middleware2, middleware3)
+	wrappedHandler, err := Wrap(handler, middleware1, middleware2, middleware3)
+	assert.NoError(t, err)
 	assert.NotNil(t, wrappedHandler)
 
 	req := httptest.NewRequest("GET", "http://example.com/", nil)
@@ -62,6 +65,27 @@ func TestWrapReturnsWrappedHandlerWhenMiddlewareProvided(t *testing.T) {
 	assert.Equal(t, expectedResponseText, string(res))
 }
 
+// TODO
+func TestWrapReturnsErrorWhenMiddlewareReturnsError(t *testing.T) {
+	handlerResponseText := "handler"
+	handler := mockHandler(handlerResponseText)
+
+	middleware1ResponseText := "middleware1"
+	middleware1 := mockMiddleware(middleware1ResponseText)
+
+	mockErr := errors.New("mock error")
+	var middleware2 MiddlewareFunc = func(h http.Handler) (http.Handler, error) {
+		return nil, mockErr
+	}
+
+	middleware3ResponseText := "middleware3"
+	middleware3 := mockMiddleware(middleware3ResponseText)
+
+	_, err := Wrap(handler, middleware1, middleware2, middleware3)
+	expectedErrMsg := fmt.Sprintf("failed to wrap handler: %v", mockErr.Error())
+	assert.EqualError(t, err, expectedErrMsg)
+}
+
 func mockHandler(responseText string) http.Handler {
 	var handlerFunc http.HandlerFunc = func(
 		w http.ResponseWriter,
@@ -73,14 +97,14 @@ func mockHandler(responseText string) http.Handler {
 }
 
 func mockMiddleware(responseText string) MiddlewareFunc {
-	var middlewareFunc MiddlewareFunc = func(h http.Handler) http.Handler {
+	var middlewareFunc MiddlewareFunc = func(h http.Handler) (http.Handler, error) {
 		var handlerFunc http.HandlerFunc = func(
 			w http.ResponseWriter,
 			r *http.Request) {
 			w.Write([]byte(responseText))
 			h.ServeHTTP(w, r)
 		}
-		return handlerFunc
+		return handlerFunc, nil
 	}
 
 	return middlewareFunc

@@ -6,7 +6,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func LogMiddlewareFunc(h http.Handler) http.Handler {
+func LogMiddlewareFunc(h http.Handler) (http.Handler, error) {
 	var handlerFunc http.HandlerFunc = func(
 		w http.ResponseWriter,
 		r *http.Request) {
@@ -19,5 +19,5 @@ func LogMiddlewareFunc(h http.Handler) http.Handler {
 		h.ServeHTTP(w, r)
 	}
 
-	return handlerFunc
+	return handlerFunc, nil
 }

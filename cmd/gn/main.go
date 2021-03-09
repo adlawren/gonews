@@ -206,6 +206,7 @@ func main() {
 
 	middlewareFuncs := []middleware.MiddlewareFunc{
 		middleware.LogMiddlewareFunc,
+		middleware.ThrottleMiddlewareFunc,
 	}
 	if *authEnabled || os.Getenv(envAuth) == "true" {
 		middlewareFuncs = append(
@@ -213,16 +214,22 @@ func main() {
 			middleware.AuthMiddlewareFunc)
 	}
 
+	wrappedHandler, err := middleware.Wrap(mux, middlewareFuncs...)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to inject middleware")
+		return
+	}
+
 	if *tlsEnabled || os.Getenv(envTLS) == "true" {
 		err = http.ListenAndServeTLS(
 			":8080",
 			certPath,
 			keyPath,
-			middleware.Wrap(mux, middlewareFuncs...))
+			wrappedHandler)
 	} else {
 		err = http.ListenAndServe(
 			":8080",
-			middleware.Wrap(mux, middlewareFuncs...))
+			wrappedHandler)
 	}
 	log.Error().Err(err).Msg("Server failed")
 }

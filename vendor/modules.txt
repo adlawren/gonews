@@ -155,6 +155,11 @@ github.com/spf13/viper
 github.com/stretchr/testify/assert
 # github.com/subosito/gotenv v1.2.0
 github.com/subosito/gotenv
+# github.com/ulule/limiter v2.2.2+incompatible
+github.com/ulule/limiter
+github.com/ulule/limiter/drivers/middleware/stdlib
+github.com/ulule/limiter/drivers/store/common
+github.com/ulule/limiter/drivers/store/memory
 # github.com/ziutek/mymysql v1.5.4
 github.com/ziutek/mymysql/godrv
 github.com/ziutek/mymysql/mysql

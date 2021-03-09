@@ -19,7 +19,8 @@ var (
 )
 
 func TestAuthMiddlewareReturnsUnauthorizedWhenCredsMissing(t *testing.T) {
-	authMiddlewareHandler := middleware.AuthMiddlewareFunc(nil)
+	authMiddlewareHandler, err := middleware.AuthMiddlewareFunc(nil)
+	assert.NoError(t, err)
 
 	dbCfg, _ := test.InitDB(t, migrationsDir)
 	config.SetDBConfigInst(dbCfg)
@@ -32,7 +33,8 @@ func TestAuthMiddlewareReturnsUnauthorizedWhenCredsMissing(t *testing.T) {
 }
 
 func TestAuthMiddlewareReturnsUnauthorizedWhenCredsInvalid(t *testing.T) {
-	authMiddlewareHandler := middleware.AuthMiddlewareFunc(nil)
+	authMiddlewareHandler, err := middleware.AuthMiddlewareFunc(nil)
+	assert.NoError(t, err)
 
 	dbCfg, _ := test.InitDB(t, migrationsDir)
 	config.SetDBConfigInst(dbCfg)
@@ -56,7 +58,8 @@ func TestAuthMiddlewareCallsNextHandlerWhenCredsValid(t *testing.T) {
 		r *http.Request) {
 		w.Write([]byte(mockResponseText))
 	}
-	authMiddlewareHandler := middleware.AuthMiddlewareFunc(mockHandlerFunc)
+	authMiddlewareHandler, err := middleware.AuthMiddlewareFunc(mockHandlerFunc)
+	assert.NoError(t, err)
 
 	dbCfg, db := test.InitDB(t, migrationsDir)
 	config.SetDBConfigInst(dbCfg)
