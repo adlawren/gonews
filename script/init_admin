@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+echo "{\"Username\":\"admin\",\"PasswordHash\":\"$(./gnctl -hash-password ${1})\"}" | ./gnctl -upsert-users
