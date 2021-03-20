@@ -1,6 +1,8 @@
-version: '3'
+version: '3.5'
 services:
   web:
+    ports:
+      - "443:8080"
     environment:
       GONEWS_TLS: 'true'
     secrets:
