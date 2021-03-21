@@ -9,7 +9,7 @@ import (
 )
 
 func ThrottleMiddlewareFunc(h http.Handler) (http.Handler, error) {
-	rate, err := limiter.NewRateFromFormatted("2-S")
+	rate, err := limiter.NewRateFromFormatted("3-S")
 	if err != nil {
 		return nil, err
 	}
