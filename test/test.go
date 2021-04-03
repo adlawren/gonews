@@ -5,12 +5,15 @@ import (
 	"gonews/auth"
 	"gonews/config"
 	"gonews/db"
+	"gonews/feed"
 	"gonews/user"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/mmcdole/gofeed"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 )
@@ -71,4 +74,26 @@ func MockUser(t *testing.T) *user.User {
 		Username:     MockUsername(),
 		PasswordHash: mockPasswordHash(t),
 	}
+}
+
+func MockItem() *feed.Item {
+	now := time.Now()
+	return &feed.Item{
+		Title:       fmt.Sprintf("Title %d", rand.Int()),
+		Description: fmt.Sprintf("Description %d", rand.Int()),
+		Link:        fmt.Sprintf("Link %d", rand.Int()),
+		Published:   now,
+		Person: gofeed.Person{
+			Name:  fmt.Sprintf("Name %d", rand.Int()),
+			Email: fmt.Sprintf("Email %d", rand.Int()),
+		},
+	}
+}
+
+func MockItems() []*feed.Item {
+	items := make([]*feed.Item, 2, 2)
+	for i := 0; i < len(items); i++ {
+		items[i] = MockItem()
+	}
+	return items
 }

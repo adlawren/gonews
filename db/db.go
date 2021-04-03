@@ -755,13 +755,13 @@ func (sdb *sqlDB) Items() ([]*feed.Item, error) {
 }
 
 func (sdb *sqlDB) MatchingItem(i *feed.Item) (*feed.Item, error) {
-	stmt, err := sdb.db.Prepare("select * from items where name=? and title=? and link=? limit 1;")
+	stmt, err := sdb.db.Prepare("select * from items where link=? limit 1;")
 	defer stmt.Close()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to prepare statement")
 	}
 
-	rows, err := stmt.Query(i.Name, i.Title, i.Link)
+	rows, err := stmt.Query(i.Link)
 	defer rows.Close()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to execute prepared statement")

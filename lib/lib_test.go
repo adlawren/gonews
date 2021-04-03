@@ -6,12 +6,12 @@ import (
 	"gonews/feed"
 	"gonews/mock_db"
 	"gonews/mock_parser"
+	"gonews/test"
 	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/mmcdole/gofeed"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -126,7 +126,7 @@ func TestFetchFeedsReturnsErrorWhenItemSaveFails(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	mockFeeds := mockFeeds()
-	mockFeedItems := mockFeedItems()
+	mockFeedItems := test.MockItems()
 	mockErr := mockError()
 
 	parser := mock_parser.NewMockParser(ctrl)
@@ -148,7 +148,7 @@ func TestFetchFeedsReturnsErrorWhenMatchingItemFails(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	mockFeeds := mockFeeds()
-	mockFeedItems := mockFeedItems()
+	mockFeedItems := test.MockItems()
 	mockErr := mockError()
 
 	parser := mock_parser.NewMockParser(ctrl)
@@ -169,7 +169,7 @@ func TestFetchFeedsSavesItems(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	mockFeeds := mockFeeds()
-	mockFeedItems := mockFeedItems()
+	mockFeedItems := test.MockItems()
 
 	parser := mock_parser.NewMockParser(ctrl)
 	parser.EXPECT().ParseURL(mockFeeds[0].URL).Return(mockFeedItems, nil)
@@ -194,7 +194,7 @@ func TestFetchFeedsSkipsMatchingItems(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	mockFeeds := mockFeeds()
-	mockFeedItems := mockFeedItems()
+	mockFeedItems := test.MockItems()
 	item1 := mockFeedItems[0]
 	item2 := mockFeedItems[1]
 
@@ -221,7 +221,7 @@ func TestFetchFeedsOmitsItemsAfterItemLimit(t *testing.T) {
 	mockFeed := randFeed()
 	mockFeed.FetchLimit = 1
 
-	mockFeedItems := mockFeedItems()
+	mockFeedItems := test.MockItems()
 
 	parser := mock_parser.NewMockParser(ctrl)
 	parser.EXPECT().ParseURL(mockFeed.URL).Return(mockFeedItems, nil)
@@ -293,32 +293,6 @@ func randFeeds(n int) []*feed.Feed {
 
 func mockFeeds() []*feed.Feed {
 	return randFeeds(2)
-}
-
-func randFeedItem() *feed.Item {
-	now := time.Now()
-	return &feed.Item{
-		Title:       fmt.Sprintf("Title %d", rand.Int()),
-		Description: fmt.Sprintf("Description %d", rand.Int()),
-		Link:        fmt.Sprintf("Link %d", rand.Int()),
-		Published:   now,
-		Person: gofeed.Person{
-			Name:  fmt.Sprintf("Name %d", rand.Int()),
-			Email: fmt.Sprintf("Email %d", rand.Int()),
-		},
-	}
-}
-
-func randFeedItems(n int) []*feed.Item {
-	items := make([]*feed.Item, n, n)
-	for i := 0; i < len(items); i++ {
-		items[i] = randFeedItem()
-	}
-	return items
-}
-
-func mockFeedItems() []*feed.Item {
-	return randFeedItems(2)
 }
 
 func mockError() error {
