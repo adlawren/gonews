@@ -235,6 +235,28 @@ func TestFetchFeedsOmitsItemsAfterItemLimit(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestFetchFeedsDoesNotOmitItemsIfSliceIsTooSmall(t *testing.T) {
+	ctrl := gomock.NewController(t)
+
+	mockFeed := randFeed()
+	mockFeed.FetchLimit = 3
+
+	mockFeedItems := test.MockItems()
+
+	parser := mock_parser.NewMockParser(ctrl)
+	parser.EXPECT().ParseURL(mockFeed.URL).Return(mockFeedItems, nil)
+
+	db := mock_db.NewMockDB(ctrl)
+	db.EXPECT().Feeds().Return([]*feed.Feed{mockFeed}, nil)
+	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, nil)
+	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
+	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, nil)
+	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
+
+	err := fetchFeeds(db, parser)
+	assert.NoError(t, err)
+}
+
 func randTag() string {
 	return fmt.Sprintf("tag %v", rand.Int())
 }

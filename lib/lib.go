@@ -79,7 +79,7 @@ func fetchFeeds(db db.DB, p parser.Parser) error {
 			continue
 		}
 
-		if feed.FetchLimit != 0 {
+		if feed.FetchLimit != 0 && uint(len(items)) > feed.FetchLimit {
 			items = items[:feed.FetchLimit]
 		}
 
