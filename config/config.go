@@ -22,9 +22,10 @@ type Config struct {
 // FeedConfig contains the values associated with each feed, parsed from the
 // config file
 type FeedConfig struct {
-	URL        string
-	Tags       []string
-	FetchLimit uint `mapstructure:"fetch_limit"`
+	URL               string
+	Tags              []string
+	FetchLimit        uint          `mapstructure:"fetch_limit"`
+	AutoDismissPeriod time.Duration `mapstructure:"auto_dismiss_period"`
 }
 
 // DBConfig contains the values needed to connect to the database
@@ -73,8 +74,9 @@ func (c Config) String() string {
 
 func (fc FeedConfig) String() string {
 	return fmt.Sprintf(
-		"URL: %s, Tags: %s, Fetch Limit: %s",
+		"URL: %s, Tags: %s, Fetch Limit: %s, AutoDismissPeriod: %s",
 		fc.URL,
 		fc.Tags,
-		fc.FetchLimit)
+		fc.FetchLimit,
+		fc.AutoDismissPeriod)
 }
