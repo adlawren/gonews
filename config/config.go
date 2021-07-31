@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -75,6 +76,22 @@ func New(path, name string) (*Config, error) {
 	cfg.FetchPeriod = fetchPeriod
 
 	return &cfg, nil
+}
+
+func (c Config) String() string {
+	return fmt.Sprintf(
+		"App Title: %s, Feeds: %s, Fetch Period: %s",
+		c.AppTitle,
+		c.Feeds,
+		c.FetchPeriod)
+}
+
+func (fc FeedConfig) String() string {
+	return fmt.Sprintf(
+		"URL: %s, Tags: %s, Fetch Limit: %s",
+		fc.URL,
+		fc.Tags,
+		fc.FetchLimit)
 }
 
 type viperConfig struct{}

@@ -12,6 +12,7 @@ import (
 	"gonews/parser"
 	"gonews/user"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -196,6 +197,7 @@ func saveItems(db db.DB, items []*feed.Item) error {
 }
 
 func main() {
+	configPath := flag.String("parse-config", "", "parse the application configuration file")
 	dbDSN := flag.String("db-dsn", "file:/data/gonews/db.sqlite3", "database DSN")
 	feedID := flag.Uint("items-from-feed", 0, "show items from feed ID")
 	feedURL := flag.String("parse-url", "", "parse items from URL")
@@ -228,6 +230,18 @@ func main() {
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create DB client")
 		return
+	}
+
+	if len(*configPath) > 0 {
+		dir := path.Dir(*configPath)
+		base := path.Base(*configPath)
+		name := strings.Replace(base, path.Ext(base), "", 1)
+		parsedConfig, err := config.New(dir, name)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to parse application configuration file")
+			return
+		}
+		fmt.Println(parsedConfig)
 	}
 
 	if *pingDB {
