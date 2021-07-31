@@ -45,6 +45,7 @@ type Item struct {
 	Published   time.Time `json:"time"`
 	Hide        bool      `json:"hide"`
 	FeedID      uint      `json:"feed_id"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 func (i Item) String() string {

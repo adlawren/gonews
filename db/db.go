@@ -71,7 +71,8 @@ func scanItem(rows *sql.Rows, i *feed.Item) error {
 		&i.Link,
 		&i.Published,
 		&i.Hide,
-		&i.FeedID)
+		&i.FeedID,
+		&i.CreatedAt)
 }
 
 func scanTimestamp(rows *sql.Rows, ts *timestamp.Timestamp) error {
@@ -914,13 +915,13 @@ func (sdb *sqlDB) updateItem(i *feed.Item) error {
 }
 
 func (sdb *sqlDB) insertItem(i *feed.Item) error {
-	stmt, err := sdb.db.Prepare("insert into items (name, email, title, description, link, published, hide, feed_id) values (?, ?, ?, ?, ?, ?, ?, ?);")
+	stmt, err := sdb.db.Prepare("insert into items (name, email, title, description, link, published, hide, feed_id, created_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?);")
 	defer stmt.Close()
 	if err != nil {
 		return errors.Wrap(err, "failed to prepare statement")
 	}
 
-	res, err := stmt.Exec(i.Name, i.Email, i.Title, i.Description, i.Link, i.Published, i.Hide, i.FeedID)
+	res, err := stmt.Exec(i.Name, i.Email, i.Title, i.Description, i.Link, i.Published, i.Hide, i.FeedID, time.Now())
 	if err != nil {
 		return errors.Wrap(err, "failed to execute prepared statement")
 	}

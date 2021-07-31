@@ -1,10 +1,12 @@
 package db_test // 'db_test' instead of 'db' to prevent gonews/test <- gonews/db <- gonews/test import cycle
 
 import (
+	"fmt"
 	"gonews/feed"
 	"gonews/test"
 	"gonews/user"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -35,6 +37,87 @@ func TestMatchingItemReturnsNilWhenNoMatchingItemExists(t *testing.T) {
 	item, err := testDB.MatchingItem(mockItem)
 	assert.NoError(t, err)
 	assert.Nil(t, item)
+}
+
+func TestSaveItemInsertsNewItem(t *testing.T) {
+	_, testDB := test.InitDB(t, migrationsDir)
+
+	mockItem := test.MockItem()
+	err := testDB.SaveItem(mockItem)
+	assert.NoError(t, err)
+
+	items, err := testDB.Items()
+	assert.NoError(t, err)
+
+	assert.Len(t, items, 1)
+
+	item := items[0]
+	assert.NotEqual(t, 0, item.ID)
+	assertItemsEqual(t, mockItem, item)
+}
+
+func TestSaveItemUpdatesExistingItem(t *testing.T) {
+	_, testDB := test.InitDB(t, migrationsDir)
+
+	mockItem := test.MockItem()
+	err := testDB.SaveItem(mockItem)
+	assert.NoError(t, err)
+
+	mockItem.Title = fmt.Sprintf("Updated %s", mockItem.Title)
+	err = testDB.SaveItem(mockItem)
+	assert.NoError(t, err)
+
+	items, err := testDB.Items()
+	assert.NoError(t, err)
+
+	assert.Len(t, items, 1)
+
+	item := items[0]
+	assert.NotEqual(t, 0, item.ID)
+	assertItemsEqual(t, mockItem, item)
+}
+
+func TestSaveItemSetsCreatedAtToCurrentTimeForNewItem(t *testing.T) {
+	_, testDB := test.InitDB(t, migrationsDir)
+
+	mockItem := test.MockItem()
+	currentTime := time.Now()
+	err := testDB.SaveItem(mockItem)
+	assert.NoError(t, err)
+
+	items, err := testDB.Items()
+	assert.NoError(t, err)
+
+	assert.Len(t, items, 1)
+
+	item := items[0]
+	assert.True(t, currentTime.Before(item.CreatedAt))
+}
+
+func TestSaveItemDoesNotChangeCreatedAtDuringUpdate(t *testing.T) {
+	_, testDB := test.InitDB(t, migrationsDir)
+
+	mockItem := test.MockItem()
+	err := testDB.SaveItem(mockItem)
+	assert.NoError(t, err)
+
+	items, err := testDB.Items()
+	assert.NoError(t, err)
+
+	assert.Len(t, items, 1)
+
+	item := items[0]
+	createdAt := item.CreatedAt
+
+	err = testDB.SaveItem(mockItem)
+	assert.NoError(t, err)
+	items, err = testDB.Items()
+	assert.NoError(t, err)
+
+	assert.Len(t, items, 1)
+
+	itemCopy := items[0]
+	assert.Equal(t, createdAt, itemCopy.CreatedAt)
 }
 
 func TestUsers(t *testing.T) {
