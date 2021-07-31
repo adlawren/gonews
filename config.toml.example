@@ -1,7 +1,6 @@
 homepage_title = "goNews"
 
 feed_fetch_period = "12h"
-feed_fetch_delay = "60m"
 
 [[feeds]]
 url = "https://www.schneier.com/blog/atom.xml"
