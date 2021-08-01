@@ -161,3 +161,59 @@ func WatchFeeds(ctx context.Context, cfg *config.Config, dbCfg *config.DBConfig)
 
 	return nil
 }
+
+// Periodically hide items from the given feed
+func AutoDismissItems(ctx context.Context, dbCfg *config.DBConfig, feedCfg *config.FeedConfig) error {
+	db, err := db.New(dbCfg)
+	if err != nil {
+		return errors.Wrap(err, "failed to create db client")
+	}
+
+	defer db.Close()
+
+	autoDismissPeriod := feedCfg.AutoDismissPeriod
+	if autoDismissPeriod.Milliseconds() == 0 {
+		return nil
+	}
+
+	feed, err := db.MatchingFeed(&feed.Feed{URL: feedCfg.URL})
+	if err != nil {
+		return errors.Wrap(err, "failed to get matching feed")
+	}
+
+	autoDismissedAt := feed.AutoDismissedAt
+	for {
+		wait := autoDismissPeriod - time.Since(autoDismissedAt)
+		if wait > 0 {
+			timer := time.NewTimer(wait)
+			select {
+			case <-timer.C:
+				break
+			case <-ctx.Done():
+				return nil
+			}
+		}
+
+		items, err := db.ItemsFromFeed(feed)
+		if err != nil {
+			return errors.Wrap(err, "failed to get items from feed")
+		}
+
+		for _, item := range items {
+			item.Hide = true
+			err = db.SaveItem(item)
+			if err != nil {
+				return errors.Wrap(err, "failed to save item")
+			}
+		}
+
+		autoDismissedAt = time.Now()
+		feed.AutoDismissedAt = autoDismissedAt
+		err = db.SaveFeed(feed)
+		if err != nil {
+			return errors.Wrap(err, "failed to save feed")
+		}
+	}
+
+	return nil
+}

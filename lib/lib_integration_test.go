@@ -18,6 +18,9 @@ var (
 )
 
 func testConfig(t *testing.T) *config.Config {
+	autoDismissPeriod, err := time.ParseDuration("10s")
+	assert.NoError(t, err)
+
 	fetchPeriodDuration, err := time.ParseDuration("1s")
 	assert.NoError(t, err)
 
@@ -29,6 +32,7 @@ func testConfig(t *testing.T) *config.Config {
 				Tags: []string{
 					"tag1",
 				},
+				AutoDismissPeriod: autoDismissPeriod,
 			},
 		},
 		FetchPeriod: fetchPeriodDuration,
@@ -140,5 +144,51 @@ func TestWatchFeeds(t *testing.T) {
 	assert.Equal(t, len(items), len(expectedItems))
 	for i := 0; i < len(items); i++ {
 		assert.Equal(t, items[i].String(), expectedItems[i].String())
+	}
+}
+
+func TestAutoDismissItems(t *testing.T) {
+	dbCfg, db := test.InitDB(t, migrationsDir)
+	testCfg := testConfig(t)
+
+	err := InsertMissingFeeds(testCfg, db)
+	assert.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		err := rss.Serve(ctx, "test/sample.xml", 8081)
+		if ctx.Err() != context.Canceled {
+			assert.NoError(t, err)
+		}
+	}()
+
+	go func() {
+		err := WatchFeeds(ctx, testCfg, dbCfg)
+		if ctx.Err() != context.Canceled {
+			assert.NoError(t, err)
+		}
+	}()
+
+	go func() {
+		err := AutoDismissItems(ctx, dbCfg, testCfg.Feeds[0])
+		if ctx.Err() != context.Canceled {
+			assert.NoError(t, err)
+		}
+	}()
+
+	d, err := time.ParseDuration("15s")
+	assert.NoError(t, err)
+
+	time.Sleep(d)
+
+	feed, err := db.MatchingFeed(&feed.Feed{URL: testCfg.Feeds[0].URL})
+	assert.NoError(t, err)
+
+	items, err := db.ItemsFromFeed(feed)
+	assert.NoError(t, err)
+	for _, item := range items {
+		assert.True(t, item.Hide)
 	}
 }

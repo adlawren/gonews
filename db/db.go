@@ -54,7 +54,7 @@ func scanUser(rows *sql.Rows, u *user.User) error {
 }
 
 func scanFeed(rows *sql.Rows, f *feed.Feed) error {
-	return rows.Scan(&f.ID, &f.URL, &f.FetchLimit)
+	return rows.Scan(&f.ID, &f.URL, &f.FetchLimit, &f.AutoDismissedAt)
 }
 
 func scanTag(rows *sql.Rows, t *feed.Tag) error {
@@ -450,13 +450,13 @@ func (sdb *sqlDB) FeedsFromTag(t *feed.Tag) ([]*feed.Feed, error) {
 }
 
 func (sdb *sqlDB) updateFeed(f *feed.Feed) error {
-	stmt, err := sdb.db.Prepare("update feeds set url=?, fetch_limit=? where id=?;")
+	stmt, err := sdb.db.Prepare("update feeds set url=?, fetch_limit=?, auto_dismissed_at=? where id=?;")
 	defer stmt.Close()
 	if err != nil {
 		return errors.Wrap(err, "failed to prepare statement")
 	}
 
-	res, err := stmt.Exec(f.URL, f.FetchLimit, f.ID)
+	res, err := stmt.Exec(f.URL, f.FetchLimit, f.AutoDismissedAt, f.ID)
 	if err != nil {
 		return errors.Wrap(err, "failed to execute prepared statement")
 	}
@@ -473,13 +473,13 @@ func (sdb *sqlDB) updateFeed(f *feed.Feed) error {
 }
 
 func (sdb *sqlDB) insertFeed(f *feed.Feed) error {
-	stmt, err := sdb.db.Prepare("insert into feeds (url, fetch_limit) values (?, ?);")
+	stmt, err := sdb.db.Prepare("insert into feeds (url, fetch_limit, auto_dismissed_at) values (?, ?, ?);")
 	defer stmt.Close()
 	if err != nil {
 		return errors.Wrap(err, "failed to prepare statement")
 	}
 
-	res, err := stmt.Exec(f.URL, f.FetchLimit)
+	res, err := stmt.Exec(f.URL, f.FetchLimit, f.AutoDismissedAt)
 	if err != nil {
 		return errors.Wrap(err, "failed to execute prepared statement")
 	}
