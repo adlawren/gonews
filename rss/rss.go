@@ -1,22 +1,47 @@
 package rss
 
 import (
+	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 )
 
-func Serve(xmlPath string, port int) error {
+func Serve(ctx context.Context, xmlPath string, port int) error {
 	_, err := os.Stat(xmlPath)
 	if err != nil {
 		return errors.Wrap(err, "failed to stat XML file")
 	}
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, xmlPath)
 	})
 
-	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+	server := &http.Server{
+		Addr:        fmt.Sprintf(":%d", port),
+		Handler:     mux,
+		BaseContext: func(_ net.Listener) context.Context { return ctx },
+	}
+
+	go func() {
+		err := server.ListenAndServe()
+		if err != http.ErrServerClosed {
+			log.Error().Err(err).Msg("Failed to listen and serve")
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		err = server.Shutdown(context.Background())
+		if err != nil {
+			return errors.Wrap(err, "failed to shutdown server")
+		}
+	}
+
+	return nil
 }

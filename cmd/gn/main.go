@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -199,7 +200,7 @@ func main() {
 
 	go func() {
 		for {
-			err := lib.WatchFeeds(cfg, dbCfg)
+			err := lib.WatchFeeds(context.Background(), cfg, dbCfg)
 			log.Error().Err(err).Msg("Failed to watch feeds")
 		}
 	}()

@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"gonews/config"
 	"gonews/feed"
 	"gonews/rss"
@@ -17,7 +18,7 @@ var (
 )
 
 func testConfig(t *testing.T) *config.Config {
-	d, err := time.ParseDuration("10s")
+	fetchPeriodDuration, err := time.ParseDuration("1s")
 	assert.NoError(t, err)
 
 	return &config.Config{
@@ -30,7 +31,7 @@ func testConfig(t *testing.T) *config.Config {
 				},
 			},
 		},
-		FetchPeriod: d,
+		FetchPeriod: fetchPeriodDuration,
 	}
 }
 
@@ -96,15 +97,24 @@ func TestWatchFeeds(t *testing.T) {
 	err := InsertMissingFeeds(testCfg, db)
 	assert.NoError(t, err)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	go func() {
-		assert.NoError(t, rss.Serve("test/sample.xml", 8081))
+		err := rss.Serve(ctx, "test/sample.xml", 8081)
+		if ctx.Err() != context.Canceled {
+			assert.NoError(t, err)
+		}
 	}()
 
 	go func() {
-		assert.NoError(t, WatchFeeds(testCfg, dbCfg))
+		err := WatchFeeds(ctx, testCfg, dbCfg)
+		if ctx.Err() != context.Canceled {
+			assert.NoError(t, err)
+		}
 	}()
 
-	d, err := time.ParseDuration("30s")
+	d, err := time.ParseDuration("5s")
 	assert.NoError(t, err)
 
 	time.Sleep(d)

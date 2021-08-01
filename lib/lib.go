@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"gonews/config"
 	"gonews/db"
 	"gonews/feed"
@@ -114,7 +115,7 @@ func fetchFeeds(db db.DB, p parser.Parser) error {
 
 // Periodically parse feeds from the DB and insert any nonexistent items,
 // subject to the fetch period from the given config
-func WatchFeeds(cfg *config.Config, dbCfg *config.DBConfig) error {
+func WatchFeeds(ctx context.Context, cfg *config.Config, dbCfg *config.DBConfig) error {
 	db, err := db.New(dbCfg)
 	if err != nil {
 		return errors.Wrap(err, "failed to create db client")
@@ -140,6 +141,8 @@ func WatchFeeds(cfg *config.Config, dbCfg *config.DBConfig) error {
 			select {
 			case <-timer.C:
 				break
+			case <-ctx.Done():
+				return nil
 			}
 		}
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"gonews/rss"
 
@@ -14,7 +15,7 @@ func main() {
 	flag.Parse()
 
 	if len(*xmlPath) > 0 {
-		err := rss.Serve(*xmlPath, *port)
+		err := rss.Serve(context.Background(), *xmlPath, *port)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to serve RSS")
 			return
