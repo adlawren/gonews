@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mmcdole/gofeed"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -56,10 +55,8 @@ func expectedItems() []*feed.Item {
 	pubDate := time.Date(2004, time.October, 19, 12, 0, 0, 0, time.UTC)
 	return []*feed.Item{
 		{
-			Person: gofeed.Person{
-				Name:  "",
-				Email: "",
-			},
+			Name:        "",
+			Email:       "",
 			Title:       "RSS Solutions for Restaurants",
 			Description: "RSS Solutions for Restaurants description",
 			Link:        "http://www.feedforall.com/restaurant.htm",
@@ -68,10 +65,8 @@ func expectedItems() []*feed.Item {
 			FeedID:      1,
 		},
 		{
-			Person: gofeed.Person{
-				Name:  "",
-				Email: "",
-			},
+			Name:        "",
+			Email:       "",
 			Title:       "RSS Solutions for Schools and Colleges",
 			Description: "RSS Solutions for Schools and Colleges description",
 			Link:        "http://www.feedforall.com/schools.htm",
@@ -80,10 +75,8 @@ func expectedItems() []*feed.Item {
 			FeedID:      1,
 		},
 		{
-			Person: gofeed.Person{
-				Name:  "",
-				Email: "",
-			},
+			Name:        "",
+			Email:       "",
 			Title:       "RSS Solutions for Computer Service Companies",
 			Description: "RSS Solutions for Computer Service Companies description",
 			Link:        "http://www.feedforall.com/computer-service.htm",

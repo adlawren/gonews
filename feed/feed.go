@@ -38,8 +38,9 @@ func (t Tag) String() string {
 // Some fields copied from gofeed.Item; couldn't embed gofeed.Item because it
 // includes slices, which can't be directly saved to the DB
 type Item struct {
-	ID uint
-	gofeed.Person
+	ID          uint
+	Name        string
+	Email       string
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	Link        string    `json:"link"`
@@ -88,10 +89,8 @@ func (i *Item) FromGofeedItem(gfi *gofeed.Item) error {
 		published = *gfi.PublishedParsed
 	}
 
-	i.Person = gofeed.Person{
-		Name:  name,
-		Email: email,
-	}
+	i.Name = name
+	i.Email = email
 	i.Title = html.EscapeString(gfi.Title)
 	i.Description = html.EscapeString(gfi.Description)
 	i.Link = html.EscapeString(gfi.Link)

@@ -15,6 +15,108 @@ var (
 	migrationsDir = "./migrations"
 )
 
+func TestFindAllReturnsAllModelsMatchingAttributes(t *testing.T) {
+	_, testDB := test.InitDB(t, migrationsDir)
+
+	mockFeed := test.MockFeed()
+	mockFeed.FetchLimit = 1
+	err := testDB.Save(mockFeed)
+	assert.NoError(t, err)
+
+	mockFeed2 := test.MockFeed()
+	mockFeed2.FetchLimit = 1
+	err = testDB.Save(mockFeed2)
+	assert.NoError(t, err)
+
+	mockFeed3 := test.MockFeed()
+	mockFeed3.FetchLimit = 2
+	err = testDB.Save(mockFeed3)
+	assert.NoError(t, err)
+
+	var feeds []*feed.Feed
+	err = testDB.FindAll(&feeds, map[string]interface{}{"fetch_limit": 1})
+	assert.NoError(t, err)
+
+	assert.Len(t, feeds, 2)
+	assertFeedsEqual(t, mockFeed, feeds[0])
+	assertFeedsEqual(t, mockFeed2, feeds[1])
+}
+
+func TestFindReturnsModelMatchingAttributes(t *testing.T) {
+	_, testDB := test.InitDB(t, migrationsDir)
+
+	mockFeed := test.MockFeed()
+	mockFeed.FetchLimit = 1
+	err := testDB.Save(mockFeed)
+	assert.NoError(t, err)
+
+	mockFeed2 := test.MockFeed()
+	mockFeed2.FetchLimit = 2
+	err = testDB.Save(mockFeed2)
+	assert.NoError(t, err)
+
+	var feed feed.Feed
+	err = testDB.Find(&feed, map[string]interface{}{"fetch_limit": 1})
+	assert.NoError(t, err)
+
+	assertFeedsEqual(t, mockFeed, &feed)
+}
+
+func TestAllReturnsAllModels(t *testing.T) {
+	_, testDB := test.InitDB(t, migrationsDir)
+
+	mockFeed := test.MockFeed()
+	err := testDB.Save(mockFeed)
+	assert.NoError(t, err)
+
+	mockFeed2 := test.MockFeed()
+	err = testDB.Save(mockFeed2)
+	assert.NoError(t, err)
+
+	var feeds []*feed.Feed
+	err = testDB.All(&feeds)
+	assert.NoError(t, err)
+
+	assert.Len(t, feeds, 2)
+	assertFeedsEqual(t, mockFeed, feeds[0])
+	assertFeedsEqual(t, mockFeed2, feeds[1])
+}
+
+func TestSaveCreatesNewModelIfNoneExists(t *testing.T) {
+	_, testDB := test.InitDB(t, migrationsDir)
+
+	mockFeed := test.MockFeed()
+	err := testDB.Save(mockFeed)
+	assert.NoError(t, err)
+
+	var feeds []*feed.Feed
+	err = testDB.All(&feeds)
+	assert.NoError(t, err)
+
+	assert.Len(t, feeds, 1)
+	assert.NotEqual(t, 0, feeds[0].ID)
+	assertFeedsEqual(t, mockFeed, feeds[0])
+}
+
+func TestSaveUpdatesExistingModel(t *testing.T) {
+	_, testDB := test.InitDB(t, migrationsDir)
+
+	mockFeed := test.MockFeed()
+	err := testDB.Save(mockFeed)
+	assert.NoError(t, err)
+
+	mockFeed.URL = fmt.Sprintf("%s&updated=yes", mockFeed.URL)
+	err = testDB.Save(mockFeed)
+	assert.NoError(t, err)
+
+	var feeds []*feed.Feed
+	err = testDB.All(&feeds)
+	assert.NoError(t, err)
+
+	assert.Len(t, feeds, 1)
+	assertFeedsEqual(t, mockFeed, feeds[0])
+}
+
 func TestMatchingItemReturnsMatchingItem(t *testing.T) {
 	_, testDB := test.InitDB(t, migrationsDir)
 

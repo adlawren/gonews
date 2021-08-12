@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mmcdole/gofeed"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 )
@@ -83,10 +82,8 @@ func MockItem() *feed.Item {
 		Description: fmt.Sprintf("Description %d", rand.Int()),
 		Link:        fmt.Sprintf("Link %d", rand.Int()),
 		Published:   now,
-		Person: gofeed.Person{
-			Name:  fmt.Sprintf("Name %d", rand.Int()),
-			Email: fmt.Sprintf("Email %d", rand.Int()),
-		},
+		Name:        fmt.Sprintf("Name %d", rand.Int()),
+		Email:       fmt.Sprintf("Email %d", rand.Int()),
 	}
 }
 
