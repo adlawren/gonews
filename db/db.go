@@ -8,7 +8,6 @@ import (
 	"gonews/timestamp"
 	"gonews/user"
 	"os"
-	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
@@ -20,8 +19,8 @@ import (
 type DB interface {
 	Ping() error
 	Migrate(string) error
-	Timestamp() (*time.Time, error)
-	SaveTimestamp(*time.Time) error
+	MatchingTimestamp(*timestamp.Timestamp) (*timestamp.Timestamp, error)
+	SaveTimestamp(*timestamp.Timestamp) error
 	Users() ([]*user.User, error)
 	MatchingUser(*user.User) (*user.User, error)
 	SaveUser(*user.User) error
@@ -100,145 +99,18 @@ func (sdb *sqlDB) save(ptr interface{}) error {
 	return errors.Wrap(query.Exec(sdb.db), "failed to execute query")
 }
 
-func scanTimestamp(rows *sql.Rows, ts *timestamp.Timestamp) error {
-	return rows.Scan(&ts.ID, &ts.T)
+func (sdb *sqlDB) MatchingTimestamp(ts *timestamp.Timestamp) (*timestamp.Timestamp, error) {
+	var timestamp timestamp.Timestamp
+	err := sdb.find(&timestamp, orm.Clause("where name = ?", ts.Name))
+	if errors.Is(err, orm.ErrModelNotFound) {
+		return nil, nil
+	}
+
+	return &timestamp, errors.Wrap(err, "failed to get matching timestamp")
 }
 
-func (sdb *sqlDB) Timestamp() (*time.Time, error) {
-	rows, err := sdb.db.Query("select id, t from timestamps;")
-	defer rows.Close()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to execute query")
-	}
-
-	var ts timestamp.Timestamp
-	if rows.Next() {
-		err = scanTimestamp(rows, &ts)
-	}
-
-	err = rows.Err()
-	if err != nil {
-		return &ts.T, errors.Wrap(err, "cursor error")
-	}
-
-	return &ts.T, errors.Wrap(err, "failed to scan timestamp")
-}
-
-func (sdb *sqlDB) insertTimestamp(ts *timestamp.Timestamp) error {
-	stmt, err := sdb.db.Prepare("insert into timestamps (t) values (?);")
-	defer stmt.Close()
-	if err != nil {
-		return errors.Wrap(err, "failed to prepare statement")
-	}
-
-	res, err := stmt.Exec(ts.T)
-	if err != nil {
-		return errors.Wrap(err, "failed to execute prepared statement")
-	}
-
-	count, err := res.RowsAffected()
-	if err != nil {
-		return errors.Wrap(err, "failed to get affected row count")
-	}
-	if count != 1 {
-		return errors.New("expected one row to be affected")
-	}
-
-	id, err := res.LastInsertId()
-	if err != nil {
-		return errors.Wrap(err, "failed to get last inserted id")
-	}
-
-	ts.ID = uint(id)
-
-	return nil
-}
-
-func (sdb *sqlDB) updateTimestamp(ts *timestamp.Timestamp) error {
-	stmt, err := sdb.db.Prepare("update timestamps set t=? where id=?;")
-	defer stmt.Close()
-	if err != nil {
-		return errors.Wrap(err, "failed to prepare statement")
-	}
-
-	res, err := stmt.Exec(ts.T, ts.ID)
-	if err != nil {
-		return errors.Wrap(err, "failed to execute prepared statement")
-	}
-
-	count, err := res.RowsAffected()
-	if err != nil {
-		return errors.Wrap(err, "failed to get affected row count")
-	}
-	if count != 1 {
-		return errors.New("expected one row to be affected")
-	}
-
-	return nil
-}
-
-func (sdb *sqlDB) SaveTimestamp(t *time.Time) error {
-	rows, err := sdb.db.Query("select count(*) from timestamps;")
-	defer rows.Close()
-	if err != nil {
-		return errors.Wrap(err, "failed to execute query")
-	}
-
-	var count int
-	if !rows.Next() {
-		return errors.New("no timestamps found")
-	}
-	err = rows.Scan(&count)
-	if err != nil {
-		return errors.Wrap(err, "failed to scan count")
-	}
-
-	err = rows.Err()
-	if err != nil {
-		return errors.Wrap(err, "cursor error")
-	}
-
-	if count > 1 {
-		err = errors.New("multiple timestamps in DB")
-	}
-
-	err = rows.Close()
-	if err != nil {
-		return errors.Wrap(err, "failed to close cursor")
-	}
-
-	rows, err = sdb.db.Query("select id, t from timestamps limit 1;")
-	defer rows.Close()
-	if err != nil {
-		return errors.Wrap(err, "failed to execute query")
-	}
-
-	var ts timestamp.Timestamp
-	if rows.Next() {
-		err = scanTimestamp(rows, &ts)
-	}
-	if err != nil {
-		return errors.Wrap(err, "failed to scan timestamp")
-	}
-
-	err = rows.Err()
-	if err != nil {
-		return errors.Wrap(err, "cursor error")
-	}
-
-	err = rows.Close()
-	if err != nil {
-		return errors.Wrap(err, "failed to close cursor")
-	}
-
-	ts.T = *t
-	if count == 0 {
-		err = sdb.insertTimestamp(&ts)
-	} else {
-		err = sdb.updateTimestamp(&ts)
-	}
-
-	return errors.Wrap(err, "failed to save timestamp")
+func (sdb *sqlDB) SaveTimestamp(ts *timestamp.Timestamp) error {
+	return errors.Wrap(sdb.save(ts), "failed to save timestamp")
 }
 
 func (sdb *sqlDB) Users() ([]*user.User, error) {

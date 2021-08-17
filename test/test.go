@@ -97,8 +97,7 @@ func MockItems() []*feed.Item {
 
 func MockFeed() *feed.Feed {
 	return &feed.Feed{
-		URL:             fmt.Sprintf("https://duckduckgo.com?q=%d", rand.Int()),
-		FetchLimit:      uint(rand.Int()),
-		AutoDismissedAt: time.Now(),
+		URL:        fmt.Sprintf("https://duckduckgo.com?q=%d", rand.Int()),
+		FetchLimit: uint(rand.Int()),
 	}
 }

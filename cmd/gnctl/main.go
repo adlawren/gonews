@@ -10,15 +10,27 @@ import (
 	"gonews/db"
 	"gonews/feed"
 	"gonews/parser"
+	"gonews/timestamp"
 	"gonews/user"
 	"os"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
+
+func printTimestamps(timestamps ...*timestamp.Timestamp) error {
+	for _, timestamp := range timestamps {
+		timestampBytes, err := json.Marshal(timestamp)
+		if err != nil {
+			return errors.Wrap(err, "failed to marshal json")
+		}
+		fmt.Println(string(timestampBytes[:]))
+	}
+
+	return nil
+}
 
 func printUsers(users ...*user.User) error {
 	for _, user := range users {
@@ -152,6 +164,24 @@ func scanItems() ([]*feed.Item, error) {
 	return items, nil
 }
 
+func scanTimestamps() ([]*timestamp.Timestamp, error) {
+	lines := scanLines()
+
+	var timestamps []*timestamp.Timestamp
+	for _, line := range lines {
+		var t timestamp.Timestamp
+
+		err := json.Unmarshal([]byte(line), &t)
+		if err != nil {
+			return timestamps, errors.Wrap(err, "failed to unmarshal timestamp")
+		}
+
+		timestamps = append(timestamps, &t)
+	}
+
+	return timestamps, nil
+}
+
 func saveUsers(db db.DB, users []*user.User) error {
 	for _, user := range users {
 		err := db.SaveUser(user)
@@ -196,6 +226,17 @@ func saveItems(db db.DB, items []*feed.Item) error {
 	return nil
 }
 
+func saveTimestamps(db db.DB, timestamps []*timestamp.Timestamp) error {
+	for _, timestamp := range timestamps {
+		err := db.SaveTimestamp(timestamp)
+		if err != nil {
+			return errors.Wrap(err, "failed to save timestamp")
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	configPath := flag.String("parse-config", "", "parse the application configuration file")
 	dbDSN := flag.String("db-dsn", "file:/data/gonews/db.sqlite3", "database DSN")
@@ -206,6 +247,7 @@ func main() {
 	matchingFeed := flag.String("matching-feed", "", "show matching feed, given serialized feed fields")
 	matchingItem := flag.String("matching-item", "", "show matching item, given serialized item fields")
 	matchingTag := flag.String("matching-tag", "", "show matching tag, given serialized tag fields")
+	matchingTimestamp := flag.String("matching-timestamp", "", "show matching timestamp, given serialized timestamp fields")
 	matchingUser := flag.String("matching-user", "", "show matching user, given serialized user fields")
 	migrateDB := flag.Bool("migrate-db", false, "apply DB migrations")
 	migrationsDir := flag.String("migrations-dir", "db/migrations", "database migrations directory")
@@ -213,14 +255,13 @@ func main() {
 	showFeeds := flag.Bool("feeds", false, "show feeds")
 	showItems := flag.Bool("items", false, "show items")
 	showTags := flag.Bool("tags", false, "show tags")
-	showTimestamp := flag.Bool("timestamp", false, "show timestamp")
 	showUsers := flag.Bool("users", false, "show users")
 	tagName := flag.String("items-from-tag", "", "show items from tag name")
 	testAuth := flag.String("test-auth", "", "validate the given authentication credentials; ex. 'some_user:some_password'")
 	upsertFeeds := flag.Bool("upsert-feeds", false, "upsert the given serialized feeds read from stdin, one per line")
 	upsertItems := flag.Bool("upsert-items", false, "upsert the given serialized items read from stdin, one per line")
 	upsertTags := flag.Bool("upsert-tags", false, "upsert the given serialized tags read from stdin, one per line")
-	upsertTimestamp := flag.String("upsert-timestamp", "", "upsert the timestamp using the given time")
+	upsertTimestamps := flag.Bool("upsert-timestamps", false, "upsert the given serialized timestamps read from stdin, one per line")
 	upsertUsers := flag.Bool("upsert-users", false, "upsert the given serialized users read from stdin, one per line")
 
 	flag.Parse()
@@ -260,16 +301,6 @@ func main() {
 			return
 		}
 		fmt.Println("Migrations succeeded")
-	}
-
-	if *showTimestamp {
-		t, err := adb.Timestamp()
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to get timestamp")
-			return
-		}
-
-		fmt.Println(t.Format(time.RFC3339))
 	}
 
 	if *showUsers {
@@ -395,6 +426,27 @@ func main() {
 		fmt.Println(isValid)
 	}
 
+	if len(*matchingTimestamp) > 0 {
+		var timestamp timestamp.Timestamp
+		err := json.Unmarshal([]byte(*matchingTimestamp), &timestamp)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to unmarshal timestamp")
+			return
+		}
+
+		match, err := adb.MatchingTimestamp(&timestamp)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to get matching timestamp")
+			return
+		}
+
+		err = printTimestamps(match)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to print timestamp")
+			return
+		}
+	}
+
 	if len(*matchingUser) > 0 {
 		var user user.User
 		err := json.Unmarshal([]byte(*matchingUser), &user)
@@ -499,16 +551,16 @@ func main() {
 		}
 	}
 
-	if len(*upsertTimestamp) > 0 {
-		t, err := time.Parse(time.RFC3339, *upsertTimestamp)
+	if *upsertTimestamps {
+		timestamps, err := scanTimestamps()
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to parse given time")
+			log.Error().Err(err).Msg("Failed to scan timestamps")
 			return
 		}
 
-		err = adb.SaveTimestamp(&t)
+		err = saveTimestamps(adb, timestamps)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to save timestamp")
+			log.Error().Err(err).Msg("Failed to upsert timestamps")
 			return
 		}
 	}

@@ -253,5 +253,4 @@ func assertItemsEqual(t *testing.T, i1, i2 *feed.Item) {
 func assertFeedsEqual(t *testing.T, f1, f2 *feed.Feed) {
 	assert.Equal(t, f1.URL, f2.URL)
 	assert.Equal(t, f1.FetchLimit, f2.FetchLimit)
-	assert.Equal(t, f1.AutoDismissedAt.UnixNano(), f2.AutoDismissedAt.UnixNano())
 }

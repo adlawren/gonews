@@ -17,10 +17,13 @@ var (
 )
 
 func testConfig(t *testing.T) *config.Config {
-	autoDismissPeriod, err := time.ParseDuration("10s")
+	autoDismissAfter, err := time.ParseDuration("1s")
 	assert.NoError(t, err)
 
-	fetchPeriodDuration, err := time.ParseDuration("1s")
+	autoDismissPeriod, err := time.ParseDuration("1s")
+	assert.NoError(t, err)
+
+	fetchPeriod, err := time.ParseDuration("1s")
 	assert.NoError(t, err)
 
 	return &config.Config{
@@ -31,10 +34,11 @@ func testConfig(t *testing.T) *config.Config {
 				Tags: []string{
 					"tag1",
 				},
-				AutoDismissPeriod: autoDismissPeriod,
+				AutoDismissAfter: autoDismissAfter,
 			},
 		},
-		FetchPeriod: fetchPeriodDuration,
+		FetchPeriod:       fetchPeriod,
+		AutoDismissPeriod: autoDismissPeriod,
 	}
 }
 
@@ -111,7 +115,7 @@ func TestWatchFeeds(t *testing.T) {
 		}
 	}()
 
-	d, err := time.ParseDuration("5s")
+	d, err := time.ParseDuration("3s")
 	assert.NoError(t, err)
 
 	time.Sleep(d)
@@ -165,13 +169,13 @@ func TestAutoDismissItems(t *testing.T) {
 	}()
 
 	go func() {
-		err := AutoDismissItems(ctx, dbCfg, testCfg.Feeds[0])
+		err := AutoDismissItems(ctx, testCfg, dbCfg)
 		if ctx.Err() != context.Canceled {
 			assert.NoError(t, err)
 		}
 	}()
 
-	d, err := time.ParseDuration("15s")
+	d, err := time.ParseDuration("3s")
 	assert.NoError(t, err)
 
 	time.Sleep(d)
@@ -183,5 +187,56 @@ func TestAutoDismissItems(t *testing.T) {
 	assert.NoError(t, err)
 	for _, item := range items {
 		assert.True(t, item.Hide)
+	}
+}
+
+func TestAutoDismissItemsIgnoresItemsYoungerThanAutoDismissAfter(t *testing.T) {
+	dbCfg, db := test.InitDB(t, migrationsDir)
+	testCfg := testConfig(t)
+
+	autoDismissAfter, err := time.ParseDuration("1h")
+	assert.NoError(t, err)
+
+	testCfg.Feeds[0].AutoDismissAfter = autoDismissAfter
+
+	err = InsertMissingFeeds(testCfg, db)
+	assert.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		err := rss.Serve(ctx, "test/sample.xml", 8081)
+		if ctx.Err() != context.Canceled {
+			assert.NoError(t, err)
+		}
+	}()
+
+	go func() {
+		err := WatchFeeds(ctx, testCfg, dbCfg)
+		if ctx.Err() != context.Canceled {
+			assert.NoError(t, err)
+		}
+	}()
+
+	go func() {
+		err := AutoDismissItems(ctx, testCfg, dbCfg)
+		if ctx.Err() != context.Canceled {
+			assert.NoError(t, err)
+		}
+	}()
+
+	d, err := time.ParseDuration("3s")
+	assert.NoError(t, err)
+
+	time.Sleep(d)
+
+	feed, err := db.MatchingFeed(&feed.Feed{URL: testCfg.Feeds[0].URL})
+	assert.NoError(t, err)
+
+	items, err := db.ItemsFromFeed(feed)
+	assert.NoError(t, err)
+	for _, item := range items {
+		assert.False(t, item.Hide)
 	}
 }

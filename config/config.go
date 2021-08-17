@@ -14,18 +14,19 @@ var (
 
 // Config contains the values parsed from the config file
 type Config struct {
-	AppTitle    string `mapstructure:"homepage_title"`
-	Feeds       []*FeedConfig
-	FetchPeriod time.Duration `mapstructure:"feed_fetch_period"`
+	AppTitle          string `mapstructure:"homepage_title"`
+	Feeds             []*FeedConfig
+	FetchPeriod       time.Duration `mapstructure:"feed_fetch_period"`
+	AutoDismissPeriod time.Duration `mapstructure:"auto_dismiss_period"`
 }
 
 // FeedConfig contains the values associated with each feed, parsed from the
 // config file
 type FeedConfig struct {
-	URL               string
-	Tags              []string
-	FetchLimit        uint          `mapstructure:"fetch_limit"`
-	AutoDismissPeriod time.Duration `mapstructure:"auto_dismiss_period"`
+	URL              string
+	Tags             []string
+	FetchLimit       uint          `mapstructure:"fetch_limit"`
+	AutoDismissAfter time.Duration `mapstructure:"auto_dismiss_after"`
 }
 
 // DBConfig contains the values needed to connect to the database
@@ -66,17 +67,18 @@ func New(path, name string) (*Config, error) {
 
 func (c Config) String() string {
 	return fmt.Sprintf(
-		"App Title: %s, Feeds: %s, Fetch Period: %s",
+		"App Title: %s, Feeds: %s, Fetch Period: %s, AutoDismissPeriod: %s",
 		c.AppTitle,
 		c.Feeds,
-		c.FetchPeriod)
+		c.FetchPeriod,
+		c.AutoDismissPeriod)
 }
 
 func (fc FeedConfig) String() string {
 	return fmt.Sprintf(
-		"URL: %s, Tags: %s, Fetch Limit: %d, AutoDismissPeriod: %s",
+		"URL: %s, Tags: %s, Fetch Limit: %d, AutoDismissAfter: %s",
 		fc.URL,
 		fc.Tags,
 		fc.FetchLimit,
-		fc.AutoDismissPeriod)
+		fc.AutoDismissAfter)
 }

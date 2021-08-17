@@ -6,6 +6,7 @@ import (
 	"gonews/db"
 	"gonews/feed"
 	"gonews/parser"
+	"gonews/timestamp"
 	"time"
 
 	"github.com/pkg/errors"
@@ -129,13 +130,16 @@ func WatchFeeds(ctx context.Context, cfg *config.Config, dbCfg *config.DBConfig)
 	}
 
 	fetchPeriod := cfg.FetchPeriod
-	lastFetched, err := db.Timestamp()
-	if err != nil || lastFetched == nil {
-		return errors.Wrap(err, "failed to get timestamp")
+	lastFetched, err := db.MatchingTimestamp(&timestamp.Timestamp{Name: "feeds_fetched_at"})
+	if err != nil {
+		return errors.Wrap(err, "failed to get matching timestamp")
+	}
+	if lastFetched == nil {
+		lastFetched = &timestamp.Timestamp{Name: "feeds_fetched_at"}
 	}
 
 	for {
-		wait := fetchPeriod - time.Since(*lastFetched)
+		wait := fetchPeriod - time.Since(lastFetched.T)
 		if wait > 0 {
 			timer := time.NewTimer(wait)
 			select {
@@ -151,8 +155,7 @@ func WatchFeeds(ctx context.Context, cfg *config.Config, dbCfg *config.DBConfig)
 			return errors.Wrap(err, "failed to fetch feeds")
 		}
 
-		now := time.Now()
-		lastFetched = &now
+		lastFetched.T = time.Now()
 		err = db.SaveTimestamp(lastFetched)
 		if err != nil {
 			return errors.Wrap(err, "failed to update timestamp")
@@ -162,8 +165,8 @@ func WatchFeeds(ctx context.Context, cfg *config.Config, dbCfg *config.DBConfig)
 	return nil
 }
 
-// Periodically hide items from the given feed
-func AutoDismissItems(ctx context.Context, dbCfg *config.DBConfig, feedCfg *config.FeedConfig) error {
+// Periodically hide items older than the configured duration
+func AutoDismissItems(ctx context.Context, cfg *config.Config, dbCfg *config.DBConfig) error {
 	db, err := db.New(dbCfg)
 	if err != nil {
 		return errors.Wrap(err, "failed to create db client")
@@ -171,19 +174,17 @@ func AutoDismissItems(ctx context.Context, dbCfg *config.DBConfig, feedCfg *conf
 
 	defer db.Close()
 
-	autoDismissPeriod := feedCfg.AutoDismissPeriod
-	if autoDismissPeriod.Milliseconds() == 0 {
-		return nil
-	}
-
-	feed, err := db.MatchingFeed(&feed.Feed{URL: feedCfg.URL})
+	autoDismissPeriod := cfg.AutoDismissPeriod
+	lastAutoDismissed, err := db.MatchingTimestamp(&timestamp.Timestamp{Name: "auto_dismissed_at"})
 	if err != nil {
-		return errors.Wrap(err, "failed to get matching feed")
+		return errors.Wrap(err, "failed to get matching timestamp")
+	}
+	if lastAutoDismissed == nil {
+		lastAutoDismissed = &timestamp.Timestamp{Name: "auto_dismissed_at"}
 	}
 
-	autoDismissedAt := feed.AutoDismissedAt
 	for {
-		wait := autoDismissPeriod - time.Since(autoDismissedAt)
+		wait := autoDismissPeriod - time.Since(lastAutoDismissed.T)
 		if wait > 0 {
 			timer := time.NewTimer(wait)
 			select {
@@ -194,24 +195,34 @@ func AutoDismissItems(ctx context.Context, dbCfg *config.DBConfig, feedCfg *conf
 			}
 		}
 
-		items, err := db.ItemsFromFeed(feed)
-		if err != nil {
-			return errors.Wrap(err, "failed to get items from feed")
-		}
-
-		for _, item := range items {
-			item.Hide = true
-			err = db.SaveItem(item)
+		for _, feedCfg := range cfg.Feeds {
+			feed, err := db.MatchingFeed(&feed.Feed{URL: feedCfg.URL})
 			if err != nil {
-				return errors.Wrap(err, "failed to save item")
+				return errors.Wrap(err, "failed to get matching feed")
+			}
+
+			items, err := db.ItemsFromFeed(feed)
+			if err != nil {
+				return errors.Wrap(err, "failed to get items from feed")
+			}
+
+			for _, item := range items {
+				if time.Now().Before(item.CreatedAt.Add(feedCfg.AutoDismissAfter)) {
+					continue
+				}
+
+				item.Hide = true
+				err := db.SaveItem(item)
+				if err != nil {
+					return errors.Wrap(err, "failed to save item")
+				}
 			}
 		}
 
-		autoDismissedAt = time.Now()
-		feed.AutoDismissedAt = autoDismissedAt
-		err = db.SaveFeed(feed)
+		lastAutoDismissed.T = time.Now()
+		err = db.SaveTimestamp(lastAutoDismissed)
 		if err != nil {
-			return errors.Wrap(err, "failed to save feed")
+			return errors.Wrap(err, "failed to update timestamp")
 		}
 	}
 

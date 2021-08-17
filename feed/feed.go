@@ -11,10 +11,9 @@ import (
 
 // Feed contains the data associated with a feed stored in the database
 type Feed struct {
-	ID              uint
-	URL             string
-	FetchLimit      uint
-	AutoDismissedAt time.Time
+	ID         uint
+	URL        string
+	FetchLimit uint
 }
 
 func (f Feed) String() string {

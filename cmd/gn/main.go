@@ -205,17 +205,12 @@ func main() {
 		}
 	}()
 
-	for _, feedCfg := range cfg.Feeds {
-		// Need to copy b/c it will get overwritten in the next iteration
-		// and then all of the threads would be using the same feedCfg
-		feedCfgCopy := *feedCfg
-		go func() {
-			for {
-				err := lib.AutoDismissItems(context.Background(), dbCfg, &feedCfgCopy)
-				log.Error().Err(err).Msg("Failed to automatically dismiss items")
-			}
-		}()
-	}
+	go func() {
+		for {
+			err := lib.AutoDismissItems(context.Background(), cfg, dbCfg)
+			log.Error().Err(err).Msg("Failed to auto-dismiss items")
+		}
+	}()
 
 	middlewareFuncs := []middleware.MiddlewareFunc{
 		middleware.LogMiddlewareFunc,
