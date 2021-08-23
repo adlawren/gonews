@@ -205,7 +205,7 @@ func (sdb *sqlDB) ItemsFromFeed(f *feed.Feed) ([]*feed.Item, error) {
 
 func (sdb *sqlDB) ItemsFromTag(t *feed.Tag) ([]*feed.Item, error) {
 	var items []*feed.Item
-	err := sdb.findAll(&items, orm.Clause("where feed_id in (select id from feeds where tag_id in (select id from tags where name = ?))", t.Name))
+	err := sdb.findAll(&items, orm.Clause("where feed_id in (select feed_id from tags where name = ?)", t.Name))
 	return items, errors.Wrap(err, "failed to find items")
 }
 
