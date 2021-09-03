@@ -3,7 +3,8 @@ package db
 import (
 	"database/sql"
 	"gonews/config"
-	"gonews/db/orm"
+	"gonews/db/orm/client"
+	"gonews/db/orm/query"
 	"gonews/feed"
 	"gonews/timestamp"
 	"gonews/user"
@@ -68,41 +69,14 @@ func (sdb *sqlDB) Migrate(migrationsDir string) error {
 	return errors.Wrap(err, "migrations failed")
 }
 
-func (sdb *sqlDB) all(ptr interface{}) error {
-	return sdb.findAll(ptr)
-}
-
-func (sdb *sqlDB) find(ptr interface{}, clauses ...*orm.QueryClause) error {
-	query, err := orm.SelectModel(ptr, clauses...)
-	if err != nil {
-		return errors.Wrap(err, "failed to create query")
-	}
-
-	return errors.Wrap(query.Exec(sdb.db), "failed to execute query")
-}
-
-func (sdb *sqlDB) findAll(ptr interface{}, clauses ...*orm.QueryClause) error {
-	query, err := orm.SelectModels(ptr, clauses...)
-	if err != nil {
-		return errors.Wrap(err, "failed to create query")
-	}
-
-	return errors.Wrap(query.Exec(sdb.db), "failed to execute query")
-}
-
-func (sdb *sqlDB) save(ptr interface{}) error {
-	query, err := orm.UpsertModel(ptr)
-	if err != nil {
-		return errors.Wrap(err, "failed to create query")
-	}
-
-	return errors.Wrap(query.Exec(sdb.db), "failed to execute query")
+func (sdb *sqlDB) client() client.Client {
+	return client.New(sdb.db)
 }
 
 func (sdb *sqlDB) MatchingTimestamp(ts *timestamp.Timestamp) (*timestamp.Timestamp, error) {
 	var timestamp timestamp.Timestamp
-	err := sdb.find(&timestamp, orm.Clause("where name = ?", ts.Name))
-	if errors.Is(err, orm.ErrModelNotFound) {
+	err := sdb.client().Find(&timestamp, query.NewClause("where name = ?", ts.Name))
+	if errors.Is(err, query.ErrModelNotFound) {
 		return nil, nil
 	}
 
@@ -110,18 +84,18 @@ func (sdb *sqlDB) MatchingTimestamp(ts *timestamp.Timestamp) (*timestamp.Timesta
 }
 
 func (sdb *sqlDB) SaveTimestamp(ts *timestamp.Timestamp) error {
-	return errors.Wrap(sdb.save(ts), "failed to save timestamp")
+	return errors.Wrap(sdb.client().Save(ts), "failed to save timestamp")
 }
 
 func (sdb *sqlDB) Users() ([]*user.User, error) {
 	var users []*user.User
-	return users, errors.Wrap(sdb.all(&users), "failed to get users")
+	return users, errors.Wrap(sdb.client().All(&users), "failed to get users")
 }
 
 func (sdb *sqlDB) MatchingUser(u *user.User) (*user.User, error) {
 	var user user.User
-	err := sdb.find(&user, orm.Clause("where username = ?", u.Username))
-	if errors.Is(err, orm.ErrModelNotFound) {
+	err := sdb.client().Find(&user, query.NewClause("where username = ?", u.Username))
+	if errors.Is(err, query.ErrModelNotFound) {
 		return nil, nil
 	}
 
@@ -129,24 +103,24 @@ func (sdb *sqlDB) MatchingUser(u *user.User) (*user.User, error) {
 }
 
 func (sdb *sqlDB) SaveUser(u *user.User) error {
-	return errors.Wrap(sdb.save(u), "failed to save user")
+	return errors.Wrap(sdb.client().Save(u), "failed to save user")
 }
 
 func (sdb *sqlDB) Feeds() ([]*feed.Feed, error) {
 	var feeds []*feed.Feed
-	return feeds, errors.Wrap(sdb.all(&feeds), "failed to get feeds")
+	return feeds, errors.Wrap(sdb.client().All(&feeds), "failed to get feeds")
 }
 
 func (sdb *sqlDB) FeedsFromTag(t *feed.Tag) ([]*feed.Feed, error) {
 	var feeds []*feed.Feed
-	err := sdb.findAll(&feeds, orm.Clause("where tag_id in (select id from tags where name = ?)", t.Name))
+	err := sdb.client().FindAll(&feeds, query.NewClause("where tag_id in (select id from tags where name = ?)", t.Name))
 	return feeds, errors.Wrap(err, "failed to find feeds")
 }
 
 func (sdb *sqlDB) MatchingFeed(f *feed.Feed) (*feed.Feed, error) {
 	var feed feed.Feed
-	err := sdb.find(&feed, orm.Clause("where url = ?", f.URL))
-	if errors.Is(err, orm.ErrModelNotFound) {
+	err := sdb.client().Find(&feed, query.NewClause("where url = ?", f.URL))
+	if errors.Is(err, query.ErrModelNotFound) {
 		return nil, nil
 	}
 
@@ -154,18 +128,18 @@ func (sdb *sqlDB) MatchingFeed(f *feed.Feed) (*feed.Feed, error) {
 }
 
 func (sdb *sqlDB) SaveFeed(f *feed.Feed) error {
-	return errors.Wrap(sdb.save(f), "failed to save feed")
+	return errors.Wrap(sdb.client().Save(f), "failed to save feed")
 }
 
 func (sdb *sqlDB) Tags() ([]*feed.Tag, error) {
 	var tags []*feed.Tag
-	return tags, errors.Wrap(sdb.all(&tags), "failed to get all tags")
+	return tags, errors.Wrap(sdb.client().All(&tags), "failed to get all tags")
 }
 
 func (sdb *sqlDB) MatchingTag(t *feed.Tag) (*feed.Tag, error) {
 	var tag feed.Tag
-	err := sdb.find(&tag, orm.Clause("where name = ?", t.Name))
-	if errors.Is(err, orm.ErrModelNotFound) {
+	err := sdb.client().Find(&tag, query.NewClause("where name = ?", t.Name))
+	if errors.Is(err, query.ErrModelNotFound) {
 		return nil, nil
 	}
 
@@ -173,18 +147,18 @@ func (sdb *sqlDB) MatchingTag(t *feed.Tag) (*feed.Tag, error) {
 }
 
 func (sdb *sqlDB) SaveTag(t *feed.Tag) error {
-	return errors.Wrap(sdb.save(t), "failed to save tag")
+	return errors.Wrap(sdb.client().Save(t), "failed to save tag")
 }
 
 func (sdb *sqlDB) Items() ([]*feed.Item, error) {
 	var items []*feed.Item
-	return items, errors.Wrap(sdb.all(&items), "failed to get all items")
+	return items, errors.Wrap(sdb.client().All(&items), "failed to get all items")
 }
 
 func (sdb *sqlDB) MatchingItem(i *feed.Item) (*feed.Item, error) {
 	var item feed.Item
-	err := sdb.find(&item, orm.Clause("where link = ?", i.Link))
-	if errors.Is(err, orm.ErrModelNotFound) {
+	err := sdb.client().Find(&item, query.NewClause("where link = ?", i.Link))
+	if errors.Is(err, query.ErrModelNotFound) {
 		return nil, nil
 	}
 
@@ -193,24 +167,24 @@ func (sdb *sqlDB) MatchingItem(i *feed.Item) (*feed.Item, error) {
 
 func (sdb *sqlDB) Item(id uint) (*feed.Item, error) {
 	var item feed.Item
-	err := sdb.find(&item, orm.Clause("where id = ?", id))
+	err := sdb.client().Find(&item, query.NewClause("where id = ?", id))
 	return &item, errors.Wrap(err, "failed to find item")
 }
 
 func (sdb *sqlDB) ItemsFromFeed(f *feed.Feed) ([]*feed.Item, error) {
 	var items []*feed.Item
-	err := sdb.findAll(&items, orm.Clause("where feed_id = ?", f.ID))
+	err := sdb.client().FindAll(&items, query.NewClause("where feed_id = ?", f.ID))
 	return items, errors.Wrap(err, "failed to find items")
 }
 
 func (sdb *sqlDB) ItemsFromTag(t *feed.Tag) ([]*feed.Item, error) {
 	var items []*feed.Item
-	err := sdb.findAll(&items, orm.Clause("where feed_id in (select feed_id from tags where name = ?)", t.Name))
+	err := sdb.client().FindAll(&items, query.NewClause("where feed_id in (select feed_id from tags where name = ?)", t.Name))
 	return items, errors.Wrap(err, "failed to find items")
 }
 
 func (sdb *sqlDB) SaveItem(i *feed.Item) error {
-	return errors.Wrap(sdb.save(i), "failed to save item")
+	return errors.Wrap(sdb.client().Save(i), "failed to save item")
 }
 
 func (sdb *sqlDB) Close() error {

@@ -1,4 +1,4 @@
-package orm
+package query
 
 import (
 	"database/sql"
@@ -108,15 +108,15 @@ func modelsTable(models interface{}) string {
 	return fmt.Sprintf("%ss", toSnake(modelName))
 }
 
-// QueryClause represents an SQL clause in a SQL query
-type QueryClause struct {
+// Clause represents an SQL clause in a SQL query
+type Clause struct {
 	str  string
 	args []interface{}
 }
 
-// Clause creates a QueryClause from the given arguments
-func Clause(clause string, args ...interface{}) *QueryClause {
-	return &QueryClause{
+// NewClause creates a Clause from the given arguments
+func NewClause(clause string, args ...interface{}) *Clause {
+	return &Clause{
 		str:  clause,
 		args: args,
 	}
@@ -134,12 +134,12 @@ type query struct {
 	result interface{}
 }
 
-func (q *query) add(clause *QueryClause) {
+func (q *query) add(clause *Clause) {
 	q.str = fmt.Sprintf("%s %s", q.str, clause.str)
 	q.args = append(q.args, clause.args...)
 }
 
-func (q *query) addAll(clauses ...*QueryClause) {
+func (q *query) addAll(clauses ...*Clause) {
 	for _, clause := range clauses {
 		q.add(clause)
 	}
@@ -198,15 +198,15 @@ func (q *selectCountQuery) ExecTx(tx *sql.Tx) error {
 	return nil
 }
 
-type selectModelsQuery struct {
+type selectQuery struct {
 	query
 }
 
-func (q *selectModelsQuery) Exec(db *sql.DB) error {
+func (q *selectQuery) Exec(db *sql.DB) error {
 	return exec(q, db)
 }
 
-func (q *selectModelsQuery) ExecTx(tx *sql.Tx) error {
+func (q *selectQuery) ExecTx(tx *sql.Tx) error {
 	stmt, err := tx.Prepare(q.str)
 	defer stmt.Close()
 	if err != nil {
@@ -246,15 +246,15 @@ func (q *selectModelsQuery) ExecTx(tx *sql.Tx) error {
 	return nil
 }
 
-type selectModelQuery struct {
+type selectOneQuery struct {
 	query
 }
 
-func (q *selectModelQuery) Exec(db *sql.DB) error {
+func (q *selectOneQuery) Exec(db *sql.DB) error {
 	return exec(q, db)
 }
 
-func (q *selectModelQuery) ExecTx(tx *sql.Tx) error {
+func (q *selectOneQuery) ExecTx(tx *sql.Tx) error {
 	stmt, err := tx.Prepare(q.str)
 	defer stmt.Close()
 	if err != nil {
@@ -291,15 +291,15 @@ func (q *selectModelQuery) ExecTx(tx *sql.Tx) error {
 	return nil
 }
 
-type insertModelQuery struct {
+type insertQuery struct {
 	query
 }
 
-func (q *insertModelQuery) Exec(db *sql.DB) error {
+func (q *insertQuery) Exec(db *sql.DB) error {
 	return exec(q, db)
 }
 
-func (q *insertModelQuery) ExecTx(tx *sql.Tx) error {
+func (q *insertQuery) ExecTx(tx *sql.Tx) error {
 	resultVal := reflect.Indirect(reflect.ValueOf(q.result))
 
 	snakeFieldNames := []string{}
@@ -363,15 +363,15 @@ func (q *insertModelQuery) ExecTx(tx *sql.Tx) error {
 	return nil
 }
 
-type updateModelQuery struct {
+type updateQuery struct {
 	query
 }
 
-func (q *updateModelQuery) Exec(db *sql.DB) error {
+func (q *updateQuery) Exec(db *sql.DB) error {
 	return exec(q, db)
 }
 
-func (q *updateModelQuery) ExecTx(tx *sql.Tx) error {
+func (q *updateQuery) ExecTx(tx *sql.Tx) error {
 	resultVal := reflect.Indirect(reflect.ValueOf(q.result))
 
 	fieldNames := []string{}
@@ -422,18 +422,18 @@ func (q *updateModelQuery) ExecTx(tx *sql.Tx) error {
 	return nil
 }
 
-type upsertModelQuery struct {
+type upsertQuery struct {
 	query
 }
 
-func (q *upsertModelQuery) Exec(db *sql.DB) error {
+func (q *upsertQuery) Exec(db *sql.DB) error {
 	return exec(q, db)
 }
 
-func (q *upsertModelQuery) ExecTx(tx *sql.Tx) error {
+func (q *upsertQuery) ExecTx(tx *sql.Tx) error {
 	var count int
 	resultVal := reflect.Indirect(reflect.ValueOf(q.result))
-	selectCountFromQuery := SelectCountFrom(modelTable(q.result), &count, Clause("where id = ?", resultVal.FieldByName("ID").Interface()))
+	selectCountFromQuery := SelectCountFrom(modelTable(q.result), &count, NewClause("where id = ?", resultVal.FieldByName("ID").Interface()))
 
 	err := selectCountFromQuery.ExecTx(tx)
 	if err != nil {
@@ -442,9 +442,9 @@ func (q *upsertModelQuery) ExecTx(tx *sql.Tx) error {
 
 	var query Query
 	if count > 0 {
-		query, err = UpdateModel(q.result)
+		query, err = Update(q.result)
 	} else {
-		query, err = InsertModel(q.result)
+		query, err = Insert(q.result)
 	}
 
 	if err != nil {
@@ -459,8 +459,8 @@ func (q *upsertModelQuery) ExecTx(tx *sql.Tx) error {
 	return nil
 }
 
-// SelectCountFrom creates a query which fetches the number of records in the given table and assigns the result to the given reference, subject to the given query clauses
-func SelectCountFrom(table string, result *int, clauses ...*QueryClause) Query {
+// SelectCountFrom returns a select query which fetches the number of records in the given table and assigns the result to the given reference, subject to the given query clauses
+func SelectCountFrom(table string, result *int, clauses ...*Clause) Query {
 	var query selectCountQuery
 
 	query.str = fmt.Sprintf("select count(*) from %s", table)
@@ -470,9 +470,9 @@ func SelectCountFrom(table string, result *int, clauses ...*QueryClause) Query {
 	return &query
 }
 
-// SelectModels creates a query which fetches the models from the appropriate table and assigns the result to the given interface, subject to the given query clauses
-func SelectModels(result interface{}, clauses ...*QueryClause) (Query, error) {
-	var query selectModelsQuery
+// Select returns a select query which fetches the models from the appropriate table and assigns the result to the given interface, subject to the given query clauses
+func Select(result interface{}, clauses ...*Clause) (Query, error) {
+	var query selectQuery
 
 	if !isModels(result) {
 		return &query, ErrInvalidModelsArg
@@ -485,9 +485,9 @@ func SelectModels(result interface{}, clauses ...*QueryClause) (Query, error) {
 	return &query, nil
 }
 
-// SelectModel creates a query which fetches the model from the appropriate table and assigns the result to the given interface, subject to the given query clauses
-func SelectModel(result interface{}, clauses ...*QueryClause) (Query, error) {
-	var query selectModelQuery
+// SelectOne returns a select query which fetches the first model from the appropriate table and assigns the result to the given interface, subject to the given query clauses
+func SelectOne(result interface{}, clauses ...*Clause) (Query, error) {
+	var query selectOneQuery
 
 	if !isModel(result) {
 		return &query, ErrInvalidModelArg
@@ -500,9 +500,9 @@ func SelectModel(result interface{}, clauses ...*QueryClause) (Query, error) {
 	return &query, nil
 }
 
-// InsertModel creates a query which inserts the model into the appropriate table
-func InsertModel(result interface{}) (Query, error) {
-	var query insertModelQuery
+// Insert returns an insert query which inserts the model into the appropriate table
+func Insert(result interface{}) (Query, error) {
+	var query insertQuery
 
 	if !isModel(result) {
 		return &query, ErrInvalidModelArg
@@ -513,9 +513,9 @@ func InsertModel(result interface{}) (Query, error) {
 	return &query, nil
 }
 
-// UpdateModel creates a query which updates the model in the appropriate table
-func UpdateModel(result interface{}) (Query, error) {
-	var query updateModelQuery
+// Update returns an update query which updates the model in the appropriate table
+func Update(result interface{}) (Query, error) {
+	var query updateQuery
 
 	if !isModel(result) {
 		return &query, ErrInvalidModelArg
@@ -526,9 +526,9 @@ func UpdateModel(result interface{}) (Query, error) {
 	return &query, nil
 }
 
-// UpsertModel creates a query which inserts the model into the appropriate table if it has an unspecified ID, and updates the model otherwise
-func UpsertModel(result interface{}) (Query, error) {
-	var query upsertModelQuery
+// Upsert returns an upsert query which inserts the model into the appropriate table if it has an unspecified ID, and updates the model otherwise
+func Upsert(result interface{}) (Query, error) {
+	var query upsertQuery
 
 	if !isModel(result) {
 		return &query, ErrInvalidModelArg
