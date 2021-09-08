@@ -62,24 +62,24 @@ func scanModels(i interface{}) error {
 
 	iKind := reflect.TypeOf(i).Kind()
 	if iKind != reflect.Ptr {
-		return fmt.Errorf("ptr to slice required")
+		return fmt.Errorf("pointer to slice required")
 	}
 
 	iPtrKind := reflect.Indirect(reflect.ValueOf(i)).Kind()
 	if iPtrKind != reflect.Slice {
-		return fmt.Errorf("ptr to slice required")
+		return fmt.Errorf("pointer to slice required")
 	}
 
 	iPtrVal := reflect.Indirect(reflect.ValueOf(i))
 	for _, line := range lines {
-		nextElem := reflect.New(iPtrVal.Type().Elem())
+		nextElem := reflect.New(iPtrVal.Type().Elem().Elem())
 
-		err := json.Unmarshal([]byte(line), reflect.Indirect(nextElem).Interface())
+		err := json.Unmarshal([]byte(line), nextElem.Interface())
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal json: %w", err)
 		}
 
-		iPtrVal.Set(reflect.Append(iPtrVal, reflect.Indirect(nextElem)))
+		iPtrVal.Set(reflect.Append(iPtrVal, nextElem))
 	}
 
 	return nil
