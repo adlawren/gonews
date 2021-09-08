@@ -14,68 +14,33 @@ import (
 	"gonews/user"
 	"os"
 	"path"
+	"reflect"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
-func printTimestamps(timestamps ...*timestamp.Timestamp) error {
-	for _, timestamp := range timestamps {
-		timestampBytes, err := json.Marshal(timestamp)
-		if err != nil {
-			return errors.Wrap(err, "failed to marshal json")
-		}
-		fmt.Println(string(timestampBytes[:]))
+func printModels(i interface{}) error {
+	iKind := reflect.TypeOf(i).Kind()
+	if iKind != reflect.Array && iKind != reflect.Slice {
+		return fmt.Errorf("array or slice required")
+	}
+
+	iVal := reflect.ValueOf(i)
+	for i := 0; i < iVal.Len(); i++ {
+		printModel(iVal.Index(i).Interface())
 	}
 
 	return nil
 }
 
-func printUsers(users ...*user.User) error {
-	for _, user := range users {
-		userBytes, err := json.Marshal(user)
-		if err != nil {
-			return errors.Wrap(err, "failed to marshal json")
-		}
-		fmt.Println(string(userBytes[:]))
+func printModel(model interface{}) error {
+	modelBytes, err := json.Marshal(model)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal json")
 	}
-
-	return nil
-}
-
-func printFeeds(feeds ...*feed.Feed) error {
-	for _, feed := range feeds {
-		feedBytes, err := json.Marshal(feed)
-		if err != nil {
-			return errors.Wrap(err, "failed to marshal json")
-		}
-		fmt.Println(string(feedBytes[:]))
-	}
-
-	return nil
-}
-
-func printTags(tags ...*feed.Tag) error {
-	for _, tag := range tags {
-		tagBytes, err := json.Marshal(tag)
-		if err != nil {
-			return errors.Wrap(err, "failed to marshal json")
-		}
-		fmt.Println(string(tagBytes[:]))
-	}
-
-	return nil
-}
-
-func printItems(items ...*feed.Item) error {
-	for _, item := range items {
-		itemBytes, err := json.Marshal(item)
-		if err != nil {
-			return errors.Wrap(err, "failed to marshal json")
-		}
-		fmt.Println(string(itemBytes[:]))
-	}
+	fmt.Println(string(modelBytes[:]))
 
 	return nil
 }
@@ -310,7 +275,7 @@ func main() {
 			return
 		}
 
-		err = printUsers(users...)
+		err = printModels(users)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to print users")
 			return
@@ -324,7 +289,7 @@ func main() {
 			return
 		}
 
-		err = printFeeds(feeds...)
+		err = printModels(feeds)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to print feeds")
 			return
@@ -338,7 +303,7 @@ func main() {
 			return
 		}
 
-		err = printTags(tags...)
+		err = printModels(tags)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to print tags")
 			return
@@ -352,7 +317,7 @@ func main() {
 			return
 		}
 
-		err = printItems(items...)
+		err = printModels(items)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to print items")
 			return
@@ -366,7 +331,7 @@ func main() {
 			return
 		}
 
-		err = printItems(items...)
+		err = printModels(items)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to print items")
 			return
@@ -380,7 +345,7 @@ func main() {
 			return
 		}
 
-		err = printItems(items...)
+		err = printModels(items)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to print items")
 			return
@@ -394,7 +359,7 @@ func main() {
 			return
 		}
 
-		err = printItems(item)
+		err = printModel(item)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to print item")
 			return
@@ -440,7 +405,7 @@ func main() {
 			return
 		}
 
-		err = printTimestamps(match)
+		err = printModel(match)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to print timestamp")
 			return
@@ -461,7 +426,7 @@ func main() {
 			return
 		}
 
-		err = printUsers(match)
+		err = printModel(match)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to print user")
 			return
@@ -482,7 +447,7 @@ func main() {
 			return
 		}
 
-		err = printFeeds(match)
+		err = printModel(match)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to print feed")
 			return
@@ -503,7 +468,7 @@ func main() {
 			return
 		}
 
-		err = printTags(match)
+		err = printModel(match)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to print tag")
 			return
@@ -524,7 +489,7 @@ func main() {
 			return
 		}
 
-		err = printItems(match)
+		err = printModel(match)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to print item")
 			return
@@ -544,7 +509,7 @@ func main() {
 			return
 		}
 
-		err = printItems(items...)
+		err = printModels(items)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to print items")
 			return
