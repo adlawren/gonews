@@ -57,94 +57,32 @@ func scanLines() []string {
 	return lines
 }
 
-func scanUsers() ([]*user.User, error) {
+func scanModels(i interface{}) error {
 	lines := scanLines()
 
-	var users []*user.User
-	for _, line := range lines {
-		var u user.User
-
-		err := json.Unmarshal([]byte(line), &u)
-		if err != nil {
-			return users, errors.Wrap(err, "failed to unmarshal user")
-		}
-
-		users = append(users, &u)
+	iKind := reflect.TypeOf(i).Kind()
+	if iKind != reflect.Ptr {
+		return fmt.Errorf("ptr to slice required")
 	}
 
-	return users, nil
-}
-
-func scanFeeds() ([]*feed.Feed, error) {
-	lines := scanLines()
-
-	var feeds []*feed.Feed
-	for _, line := range lines {
-		var f feed.Feed
-
-		err := json.Unmarshal([]byte(line), &f)
-		if err != nil {
-			return feeds, errors.Wrap(err, "failed to unmarshal feed")
-		}
-
-		feeds = append(feeds, &f)
+	iPtrKind := reflect.Indirect(reflect.ValueOf(i)).Kind()
+	if iPtrKind != reflect.Slice {
+		return fmt.Errorf("ptr to slice required")
 	}
 
-	return feeds, nil
-}
-
-func scanTags() ([]*feed.Tag, error) {
-	lines := scanLines()
-
-	var tags []*feed.Tag
+	iPtrVal := reflect.Indirect(reflect.ValueOf(i))
 	for _, line := range lines {
-		var t feed.Tag
+		nextElem := reflect.New(iPtrVal.Type().Elem())
 
-		err := json.Unmarshal([]byte(line), &t)
+		err := json.Unmarshal([]byte(line), reflect.Indirect(nextElem).Interface())
 		if err != nil {
-			return tags, errors.Wrap(err, "failed to unmarshal tag")
+			return fmt.Errorf("failed to unmarshal json: %w", err)
 		}
 
-		tags = append(tags, &t)
+		iPtrVal.Set(reflect.Append(iPtrVal, reflect.Indirect(nextElem)))
 	}
 
-	return tags, nil
-}
-
-func scanItems() ([]*feed.Item, error) {
-	lines := scanLines()
-
-	var items []*feed.Item
-	for _, line := range lines {
-		var i feed.Item
-
-		err := json.Unmarshal([]byte(line), &i)
-		if err != nil {
-			return items, errors.Wrap(err, "failed to unmarshal item")
-		}
-
-		items = append(items, &i)
-	}
-
-	return items, nil
-}
-
-func scanTimestamps() ([]*timestamp.Timestamp, error) {
-	lines := scanLines()
-
-	var timestamps []*timestamp.Timestamp
-	for _, line := range lines {
-		var t timestamp.Timestamp
-
-		err := json.Unmarshal([]byte(line), &t)
-		if err != nil {
-			return timestamps, errors.Wrap(err, "failed to unmarshal timestamp")
-		}
-
-		timestamps = append(timestamps, &t)
-	}
-
-	return timestamps, nil
+	return nil
 }
 
 func saveUsers(db db.DB, users []*user.User) error {
@@ -517,7 +455,8 @@ func main() {
 	}
 
 	if *upsertTimestamps {
-		timestamps, err := scanTimestamps()
+		var timestamps []*timestamp.Timestamp
+		err := scanModels(&timestamps)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to scan timestamps")
 			return
@@ -531,7 +470,8 @@ func main() {
 	}
 
 	if *upsertUsers {
-		users, err := scanUsers()
+		var users []*user.User
+		err := scanModels(&users)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to scan users")
 			return
@@ -545,7 +485,8 @@ func main() {
 	}
 
 	if *upsertFeeds {
-		feeds, err := scanFeeds()
+		var feeds []*feed.Feed
+		err := scanModels(&feeds)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to scan feeds")
 			return
@@ -559,7 +500,8 @@ func main() {
 	}
 
 	if *upsertTags {
-		tags, err := scanTags()
+		var tags []*feed.Tag
+		err := scanModels(&tags)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to scan tags")
 			return
@@ -573,7 +515,8 @@ func main() {
 	}
 
 	if *upsertItems {
-		items, err := scanItems()
+		var items []*feed.Item
+		err := scanModels(&items)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to scan items")
 			return
