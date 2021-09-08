@@ -85,55 +85,17 @@ func scanModels(i interface{}) error {
 	return nil
 }
 
-func saveUsers(db db.DB, users []*user.User) error {
-	for _, user := range users {
-		err := db.SaveUser(user)
-		if err != nil {
-			return errors.Wrap(err, "failed to save user")
-		}
+func saveModels(db db.DB, i interface{}) error {
+	iKind := reflect.TypeOf(i).Kind()
+	if iKind != reflect.Slice {
+		return fmt.Errorf("slice required")
 	}
 
-	return nil
-}
-
-func saveFeeds(db db.DB, feeds []*feed.Feed) error {
-	for _, feed := range feeds {
-		err := db.SaveFeed(feed)
+	iVal := reflect.ValueOf(i)
+	for i := 0; i < iVal.Len(); i++ {
+		err := db.Save(iVal.Index(i).Interface())
 		if err != nil {
-			return errors.Wrap(err, "failed to save feed")
-		}
-	}
-
-	return nil
-}
-
-func saveTags(db db.DB, tags []*feed.Tag) error {
-	for _, tag := range tags {
-		err := db.SaveTag(tag)
-		if err != nil {
-			return errors.Wrap(err, "failed to save tag")
-		}
-	}
-
-	return nil
-}
-
-func saveItems(db db.DB, items []*feed.Item) error {
-	for _, item := range items {
-		err := db.SaveItem(item)
-		if err != nil {
-			return errors.Wrap(err, "failed to save item")
-		}
-	}
-
-	return nil
-}
-
-func saveTimestamps(db db.DB, timestamps []*timestamp.Timestamp) error {
-	for _, timestamp := range timestamps {
-		err := db.SaveTimestamp(timestamp)
-		if err != nil {
-			return errors.Wrap(err, "failed to save timestamp")
+			return fmt.Errorf("failed to save model: %w")
 		}
 	}
 
@@ -462,7 +424,7 @@ func main() {
 			return
 		}
 
-		err = saveTimestamps(adb, timestamps)
+		err = saveModels(adb, timestamps)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to upsert timestamps")
 			return
@@ -477,7 +439,7 @@ func main() {
 			return
 		}
 
-		err = saveUsers(adb, users)
+		err = saveModels(adb, users)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to upsert users")
 			return
@@ -492,7 +454,7 @@ func main() {
 			return
 		}
 
-		err = saveFeeds(adb, feeds)
+		err = saveModels(adb, feeds)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to upsert feeds")
 			return
@@ -507,7 +469,7 @@ func main() {
 			return
 		}
 
-		err = saveTags(adb, tags)
+		err = saveModels(adb, tags)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to upsert tags")
 			return
@@ -522,7 +484,7 @@ func main() {
 			return
 		}
 
-		err = saveItems(adb, items)
+		err = saveModels(adb, items)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to upsert item")
 			return

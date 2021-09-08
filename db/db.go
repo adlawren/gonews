@@ -20,6 +20,7 @@ import (
 type DB interface {
 	Ping() error
 	Migrate(string) error
+	Save(interface{}) error
 	MatchingTimestamp(*timestamp.Timestamp) (*timestamp.Timestamp, error)
 	SaveTimestamp(*timestamp.Timestamp) error
 	Users() ([]*user.User, error)
@@ -71,6 +72,10 @@ func (sdb *sqlDB) Migrate(migrationsDir string) error {
 
 func (sdb *sqlDB) client() client.Client {
 	return client.New(sdb.db)
+}
+
+func (sdb *sqlDB) Save(ptr interface{}) error {
+	return sdb.client().Save(ptr)
 }
 
 func (sdb *sqlDB) MatchingTimestamp(ts *timestamp.Timestamp) (*timestamp.Timestamp, error) {
