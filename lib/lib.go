@@ -99,7 +99,7 @@ func fetchFeeds(db db.DB, p parser.Parser) error {
 
 			item.FeedID = f.ID
 
-			err = db.SaveItem(item)
+			err = db.Save(item)
 			if err != nil {
 				return errors.Wrap(err, "failed to save item")
 			}
@@ -212,7 +212,7 @@ func AutoDismissItems(ctx context.Context, cfg *config.Config, dbCfg *config.DBC
 				}
 
 				item.Hide = true
-				err := db.SaveItem(item)
+				err := db.Save(item)
 				if err != nil {
 					return errors.Wrap(err, "failed to save item")
 				}

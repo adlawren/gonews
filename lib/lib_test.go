@@ -150,7 +150,7 @@ func TestFetchFeedsReturnsErrorWhenItemSaveFails(t *testing.T) {
 		return nil
 	})
 	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
-	db.EXPECT().SaveItem(gomock.Any()).Return(mockErr)
+	db.EXPECT().Save(gomock.Any()).Return(mockErr)
 
 	err := fetchFeeds(db, parser)
 	expectedErrMsg := fmt.Sprintf(
@@ -207,13 +207,13 @@ func TestFetchFeedsSavesItems(t *testing.T) {
 		return nil
 	})
 	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
-	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
+	db.EXPECT().Save(gomock.Any()).Return(nil)
 	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
-	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
+	db.EXPECT().Save(gomock.Any()).Return(nil)
 	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
-	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
+	db.EXPECT().Save(gomock.Any()).Return(nil)
 	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
-	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
+	db.EXPECT().Save(gomock.Any()).Return(nil)
 
 	err := fetchFeeds(db, parser)
 	assert.NoError(t, err)
@@ -257,9 +257,9 @@ func TestFetchFeedsSkipsMatchingItems(t *testing.T) {
 		return nil
 	})
 	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
-	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
+	db.EXPECT().Save(gomock.Any()).Return(nil)
 	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
-	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
+	db.EXPECT().Save(gomock.Any()).Return(nil)
 
 	err := fetchFeeds(db, parser)
 	assert.NoError(t, err)
@@ -286,7 +286,7 @@ func TestFetchFeedsOmitsItemsAfterItemLimit(t *testing.T) {
 		return nil
 	})
 	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
-	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
+	db.EXPECT().Save(gomock.Any()).Return(nil)
 
 	err := fetchFeeds(db, parser)
 	assert.NoError(t, err)
@@ -313,9 +313,9 @@ func TestFetchFeedsDoesNotOmitItemsIfSliceIsTooSmall(t *testing.T) {
 		return nil
 	})
 	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
-	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
+	db.EXPECT().Save(gomock.Any()).Return(nil)
 	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
-	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
+	db.EXPECT().Save(gomock.Any()).Return(nil)
 
 	err := fetchFeeds(db, parser)
 	assert.NoError(t, err)

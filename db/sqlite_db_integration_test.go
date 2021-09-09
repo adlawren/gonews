@@ -19,7 +19,7 @@ func TestSaveItemInsertsNewItem(t *testing.T) {
 	_, testDB := test.InitDB(t, migrationsDir)
 
 	mockItem := test.MockItem()
-	err := testDB.SaveItem(mockItem)
+	err := testDB.Save(mockItem)
 	assert.NoError(t, err)
 
 	var items []*feed.Item
@@ -37,11 +37,11 @@ func TestSaveItemUpdatesExistingItem(t *testing.T) {
 	_, testDB := test.InitDB(t, migrationsDir)
 
 	mockItem := test.MockItem()
-	err := testDB.SaveItem(mockItem)
+	err := testDB.Save(mockItem)
 	assert.NoError(t, err)
 
 	mockItem.Title = fmt.Sprintf("Updated %s", mockItem.Title)
-	err = testDB.SaveItem(mockItem)
+	err = testDB.Save(mockItem)
 	assert.NoError(t, err)
 
 	var items []*feed.Item
@@ -60,7 +60,7 @@ func TestSaveItemSetsCreatedAtToCurrentTimeForNewItem(t *testing.T) {
 
 	mockItem := test.MockItem()
 	currentTime := time.Now()
-	err := testDB.SaveItem(mockItem)
+	err := testDB.Save(mockItem)
 	assert.NoError(t, err)
 
 	var items []*feed.Item
@@ -77,7 +77,7 @@ func TestSaveItemDoesNotChangeCreatedAtDuringUpdate(t *testing.T) {
 	_, testDB := test.InitDB(t, migrationsDir)
 
 	mockItem := test.MockItem()
-	err := testDB.SaveItem(mockItem)
+	err := testDB.Save(mockItem)
 	assert.NoError(t, err)
 
 	var items []*feed.Item
@@ -89,7 +89,7 @@ func TestSaveItemDoesNotChangeCreatedAtDuringUpdate(t *testing.T) {
 	item := items[0]
 	createdAt := item.CreatedAt
 
-	err = testDB.SaveItem(mockItem)
+	err = testDB.Save(mockItem)
 	assert.NoError(t, err)
 
 	var items2 []*feed.Item

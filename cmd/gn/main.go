@@ -128,7 +128,7 @@ func hideHandlerFunc(w http.ResponseWriter, r *http.Request) {
 
 	item.Hide = true
 
-	err = db.SaveItem(&item)
+	err = db.Save(&item)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to update item")
 		return
