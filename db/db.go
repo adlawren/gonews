@@ -20,8 +20,8 @@ type DB interface {
 	Migrate(string) error
 	All(interface{}) error
 	Find(interface{}, ...*query.Clause) error
+	FindAll(interface{}, ...*query.Clause) error
 	Save(interface{}) error
-	MatchingFeed(*feed.Feed) (*feed.Feed, error)
 	SaveFeed(*feed.Feed) error
 	Tags() ([]*feed.Tag, error)
 	MatchingTag(*feed.Tag) (*feed.Tag, error)
@@ -76,24 +76,12 @@ func (sdb *sqlDB) Find(ptr interface{}, clauses ...*query.Clause) error {
 	return sdb.client().Find(ptr, clauses...)
 }
 
+func (sdb *sqlDB) FindAll(ptr interface{}, clauses ...*query.Clause) error {
+	return sdb.client().FindAll(ptr, clauses...)
+}
+
 func (sdb *sqlDB) Save(ptr interface{}) error {
 	return sdb.client().Save(ptr)
-}
-
-func (sdb *sqlDB) FeedsFromTag(t *feed.Tag) ([]*feed.Feed, error) {
-	var feeds []*feed.Feed
-	err := sdb.client().FindAll(&feeds, query.NewClause("where tag_id in (select id from tags where name = ?)", t.Name))
-	return feeds, errors.Wrap(err, "failed to find feeds")
-}
-
-func (sdb *sqlDB) MatchingFeed(f *feed.Feed) (*feed.Feed, error) {
-	var feed feed.Feed
-	err := sdb.client().Find(&feed, query.NewClause("where url = ?", f.URL))
-	if errors.Is(err, query.ErrModelNotFound) {
-		return nil, nil
-	}
-
-	return &feed, errors.Wrap(err, "failed to get matching feed")
 }
 
 func (sdb *sqlDB) SaveFeed(f *feed.Feed) error {

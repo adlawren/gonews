@@ -3,6 +3,7 @@ package lib
 import (
 	"context"
 	"gonews/config"
+	"gonews/db/orm/query"
 	"gonews/feed"
 	"gonews/rss"
 	"gonews/test"
@@ -135,9 +136,10 @@ func TestWatchFeeds(t *testing.T) {
 		assert.Equal(t, expectedTags[i].String(), tags[i].String())
 	}
 
-	feed, err := db.MatchingFeed(expectedFeeds[0])
+	var feed feed.Feed
+	err = db.Find(&feed, query.NewClause("where url = ?", expectedFeeds[0].URL))
 	assert.NoError(t, err)
-	items, err := db.ItemsFromFeed(feed)
+	items, err := db.ItemsFromFeed(&feed)
 	expectedItems := expectedItems()
 	assert.Equal(t, len(items), len(expectedItems))
 	for i := 0; i < len(items); i++ {
@@ -181,10 +183,11 @@ func TestAutoDismissItems(t *testing.T) {
 
 	time.Sleep(d)
 
-	feed, err := db.MatchingFeed(&feed.Feed{URL: testCfg.Feeds[0].URL})
+	var feed feed.Feed
+	err = db.Find(&feed, query.NewClause("where url = ?", testCfg.Feeds[0].URL))
 	assert.NoError(t, err)
 
-	items, err := db.ItemsFromFeed(feed)
+	items, err := db.ItemsFromFeed(&feed)
 	assert.NoError(t, err)
 	for _, item := range items {
 		assert.True(t, item.Hide)
@@ -232,10 +235,11 @@ func TestAutoDismissItemsIgnoresItemsYoungerThanAutoDismissAfter(t *testing.T) {
 
 	time.Sleep(d)
 
-	feed, err := db.MatchingFeed(&feed.Feed{URL: testCfg.Feeds[0].URL})
+	var feed feed.Feed
+	err = db.Find(&feed, query.NewClause("where url = ?", testCfg.Feeds[0].URL))
 	assert.NoError(t, err)
 
-	items, err := db.ItemsFromFeed(feed)
+	items, err := db.ItemsFromFeed(&feed)
 	assert.NoError(t, err)
 	for _, item := range items {
 		assert.False(t, item.Hide)

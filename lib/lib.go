@@ -22,12 +22,10 @@ func InsertMissingFeeds(cfg *config.Config, db db.DB) error {
 			FetchLimit: cfgFeed.FetchLimit,
 		}
 
-		existingFeed, err := db.MatchingFeed(f)
-		if err != nil {
+		var existingFeed feed.Feed
+		err := db.Find(&existingFeed, query.NewClause("where url = ?", f.URL))
+		if err != nil && !errors.Is(err, query.ErrModelNotFound) {
 			return errors.Wrap(err, "failed to get matching feed")
-		}
-		if existingFeed != nil {
-			continue
 		}
 
 		err = db.SaveFeed(f)
@@ -199,12 +197,13 @@ func AutoDismissItems(ctx context.Context, cfg *config.Config, dbCfg *config.DBC
 		}
 
 		for _, feedCfg := range cfg.Feeds {
-			feed, err := db.MatchingFeed(&feed.Feed{URL: feedCfg.URL})
+			var feed feed.Feed
+			err = db.Find(&feed, query.NewClause("where url = ?", feedCfg.URL))
 			if err != nil {
 				return errors.Wrap(err, "failed to get matching feed")
 			}
 
-			items, err := db.ItemsFromFeed(feed)
+			items, err := db.ItemsFromFeed(&feed)
 			if err != nil {
 				return errors.Wrap(err, "failed to get items from feed")
 			}

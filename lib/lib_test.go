@@ -3,6 +3,7 @@ package lib
 import (
 	"fmt"
 	"gonews/config"
+	"gonews/db/orm/query"
 	"gonews/feed"
 	"gonews/mock_db"
 	"gonews/mock_parser"
@@ -23,7 +24,7 @@ func TestInsertMissingFeedsReturnsErrorWhenMatchingFeedFails(t *testing.T) {
 	mockErr := mockError()
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().MatchingFeed(gomock.Any()).Return(nil, mockErr)
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(mockErr)
 
 	err := InsertMissingFeeds(mockCfg, db)
 	expectedErrMsg := fmt.Sprintf(
@@ -39,7 +40,7 @@ func TestInsertMissingFeedsReturnsErrorWhenFeedSaveFails(t *testing.T) {
 	mockErr := mockError()
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().MatchingFeed(gomock.Any()).Return(nil, nil)
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
 	db.EXPECT().SaveFeed(gomock.Any()).Return(mockErr)
 
 	err := InsertMissingFeeds(mockCfg, db)
@@ -56,7 +57,7 @@ func TestInsertMissingFeedsReturnsErrorWhenMatchingTagFails(t *testing.T) {
 	mockErr := mockError()
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().MatchingFeed(gomock.Any()).Return(nil, nil)
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
 	db.EXPECT().SaveFeed(gomock.Any()).Return(nil)
 	db.EXPECT().MatchingTag(gomock.Any()).Return(nil, mockErr)
 
@@ -74,7 +75,7 @@ func TestInsertMissingFeedsReturnsErrorWhenTagSaveFails(t *testing.T) {
 	mockErr := mockError()
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().MatchingFeed(gomock.Any()).Return(nil, nil)
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
 	db.EXPECT().SaveFeed(gomock.Any()).Return(nil)
 	db.EXPECT().MatchingTag(gomock.Any()).Return(nil, nil)
 	db.EXPECT().SaveTag(gomock.Any()).Return(mockErr)
@@ -94,12 +95,7 @@ func TestFetchFeedsReturnsErrorWhenFeedsReturnsError(t *testing.T) {
 	parser := mock_parser.NewMockParser(ctrl)
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().All(gomock.Any()).DoAndReturn(func(ptr interface{}) error {
-		_, ok := ptr.(*[]*feed.Feed)
-		assert.True(t, ok)
-
-		return mockErr
-	})
+	db.EXPECT().All(gomock.Any()).Return(mockErr)
 
 	err := fetchFeeds(db, parser)
 	expectedErrMsg := fmt.Sprintf(

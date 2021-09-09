@@ -337,14 +337,14 @@ func main() {
 	}
 
 	if len(*matchingFeed) > 0 {
-		var feed feed.Feed
+		var feed, match feed.Feed
 		err := json.Unmarshal([]byte(*matchingFeed), &feed)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to unmarshal feed")
 			return
 		}
 
-		match, err := adb.MatchingFeed(&feed)
+		err = adb.Find(&match, query.NewClause("where url = ?", feed.URL))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get matching feed")
 			return
