@@ -15,30 +15,6 @@ var (
 	migrationsDir = "./migrations"
 )
 
-func TestMatchingItemReturnsMatchingItem(t *testing.T) {
-	_, testDB := test.InitDB(t, migrationsDir)
-
-	mockItem := test.MockItem()
-	err := testDB.SaveItem(mockItem)
-	assert.NoError(t, err)
-
-	item, err := testDB.MatchingItem(mockItem)
-	assert.NoError(t, err)
-
-	assert.NotEqual(t, 0, item.ID)
-	assertItemsEqual(t, mockItem, item)
-}
-
-func TestMatchingItemReturnsNilWhenNoMatchingItemExists(t *testing.T) {
-	_, testDB := test.InitDB(t, migrationsDir)
-
-	mockItem := test.MockItem()
-
-	item, err := testDB.MatchingItem(mockItem)
-	assert.NoError(t, err)
-	assert.Nil(t, item)
-}
-
 func TestSaveItemInsertsNewItem(t *testing.T) {
 	_, testDB := test.InitDB(t, migrationsDir)
 

@@ -149,7 +149,7 @@ func TestFetchFeedsReturnsErrorWhenItemSaveFails(t *testing.T) {
 
 		return nil
 	})
-	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, nil)
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
 	db.EXPECT().SaveItem(gomock.Any()).Return(mockErr)
 
 	err := fetchFeeds(db, parser)
@@ -178,7 +178,7 @@ func TestFetchFeedsReturnsErrorWhenMatchingItemFails(t *testing.T) {
 
 		return nil
 	})
-	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, mockErr)
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(mockErr)
 
 	err := fetchFeeds(db, parser)
 	expectedErrMsg := fmt.Sprintf(
@@ -206,13 +206,13 @@ func TestFetchFeedsSavesItems(t *testing.T) {
 
 		return nil
 	})
-	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, nil)
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
 	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
-	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, nil)
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
 	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
-	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, nil)
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
 	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
-	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, nil)
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
 	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
 
 	err := fetchFeeds(db, parser)
@@ -240,11 +240,25 @@ func TestFetchFeedsSkipsMatchingItems(t *testing.T) {
 
 		return nil
 	})
-	db.EXPECT().MatchingItem(gomock.Any()).Return(item1, nil)
-	db.EXPECT().MatchingItem(gomock.Any()).Return(item2, nil)
-	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, nil)
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).DoAndReturn(func(ptr interface{}, clauses ...*query.Clause) error {
+		item, ok := ptr.(*feed.Item)
+		assert.True(t, ok)
+
+		*item = *item1
+
+		return nil
+	})
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).DoAndReturn(func(ptr interface{}, clauses ...*query.Clause) error {
+		item, ok := ptr.(*feed.Item)
+		assert.True(t, ok)
+
+		*item = *item2
+
+		return nil
+	})
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
 	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
-	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, nil)
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
 	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
 
 	err := fetchFeeds(db, parser)
@@ -271,7 +285,7 @@ func TestFetchFeedsOmitsItemsAfterItemLimit(t *testing.T) {
 
 		return nil
 	})
-	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, nil)
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
 	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
 
 	err := fetchFeeds(db, parser)
@@ -298,9 +312,9 @@ func TestFetchFeedsDoesNotOmitItemsIfSliceIsTooSmall(t *testing.T) {
 
 		return nil
 	})
-	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, nil)
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
 	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
-	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, nil)
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
 	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
 
 	err := fetchFeeds(db, parser)

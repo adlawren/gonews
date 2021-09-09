@@ -68,37 +68,36 @@ func fetchFeeds(db db.DB, p parser.Parser) error {
 		return errors.Wrap(err, "failed to get feeds")
 	}
 
-	for _, feed := range feeds {
-		items, err := p.ParseURL(feed.URL)
+	for _, f := range feeds {
+		items, err := p.ParseURL(f.URL)
 		if err != nil {
 			return errors.Wrap(err, "failed to parse feed")
 		}
 
 		if len(items) == 0 {
-			log.Warn().Msgf("%s feed is empty", feed.URL)
+			log.Warn().Msgf("%s feed is empty", f.URL)
 			continue
 		}
 
-		if feed.FetchLimit != 0 && uint(len(items)) > feed.FetchLimit {
-			items = items[:feed.FetchLimit]
+		if f.FetchLimit != 0 && uint(len(items)) > f.FetchLimit {
+			items = items[:f.FetchLimit]
 		}
 
 		for _, item := range items {
 			// Don't insert item if there's an existing item with
 			// the same author, title & link
-			existingItem, err := db.MatchingItem(item)
-			if err != nil {
+			var existingItem feed.Item
+			err = db.Find(&existingItem, query.NewClause("where link = ?", item.Link))
+			if err != nil && !errors.Is(err, query.ErrModelNotFound) {
 				return errors.Wrap(
 					err,
 					"failed to get matching item")
-			}
-
-			if existingItem != nil {
+			} else if err == nil {
 				log.Info().Msgf("skipping: %s", item)
 				continue
 			}
 
-			item.FeedID = feed.ID
+			item.FeedID = f.ID
 
 			err = db.SaveItem(item)
 			if err != nil {

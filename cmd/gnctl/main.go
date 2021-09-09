@@ -384,14 +384,14 @@ func main() {
 	}
 
 	if len(*matchingItem) > 0 {
-		var item feed.Item
+		var item, match feed.Item
 		err := json.Unmarshal([]byte(*matchingItem), &item)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to unmarshal item")
 			return
 		}
 
-		match, err := adb.MatchingItem(&item)
+		err = adb.Find(&match, query.NewClause("where link = ?", item.Link))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get matching item")
 			return

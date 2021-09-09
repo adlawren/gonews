@@ -22,7 +22,6 @@ type DB interface {
 	Find(interface{}, ...*query.Clause) error
 	FindAll(interface{}, ...*query.Clause) error
 	Save(interface{}) error
-	MatchingItem(*feed.Item) (*feed.Item, error)
 	SaveItem(*feed.Item) error
 	Close() error
 }
@@ -74,16 +73,6 @@ func (sdb *sqlDB) FindAll(ptr interface{}, clauses ...*query.Clause) error {
 
 func (sdb *sqlDB) Save(ptr interface{}) error {
 	return sdb.client().Save(ptr)
-}
-
-func (sdb *sqlDB) MatchingItem(i *feed.Item) (*feed.Item, error) {
-	var item feed.Item
-	err := sdb.client().Find(&item, query.NewClause("where link = ?", i.Link))
-	if errors.Is(err, query.ErrModelNotFound) {
-		return nil, nil
-	}
-
-	return &item, errors.Wrap(err, "failed to get matching item")
 }
 
 func (sdb *sqlDB) SaveItem(i *feed.Item) error {
