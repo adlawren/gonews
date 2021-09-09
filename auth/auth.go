@@ -2,6 +2,7 @@ package auth
 
 import (
 	"gonews/db"
+	"gonews/db/orm/query"
 	"gonews/user"
 
 	"github.com/pkg/errors"
@@ -9,12 +10,12 @@ import (
 )
 
 func IsValid(username, password string, db db.DB) (bool, error) {
-	user, err := db.MatchingUser(&user.User{Username: username})
-	if err != nil {
-		return false, errors.Wrap(err, "failed to get matching user")
-	}
-	if user == nil {
+	var user user.User
+	err := db.Find(&user, query.NewClause("where username = ?", username))
+	if errors.Is(err, query.ErrModelNotFound) {
 		return false, nil
+	} else if err != nil {
+		return false, errors.Wrap(err, "failed to get matching user")
 	}
 
 	err = bcrypt.CompareHashAndPassword(

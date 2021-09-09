@@ -2,6 +2,7 @@ package db_test // 'db_test' instead of 'db' to prevent gonews/test <- gonews/db
 
 import (
 	"fmt"
+	"gonews/db/orm/query"
 	"gonews/feed"
 	"gonews/test"
 	"gonews/user"
@@ -120,48 +121,6 @@ func TestSaveItemDoesNotChangeCreatedAtDuringUpdate(t *testing.T) {
 	assert.Equal(t, createdAt, itemCopy.CreatedAt)
 }
 
-func TestUsers(t *testing.T) {
-	_, testDB := test.InitDB(t, migrationsDir)
-
-	mockUser := test.MockUser(t)
-	err := testDB.SaveUser(mockUser)
-	assert.NoError(t, err)
-
-	var users []*user.User
-	err = testDB.All(&users)
-	assert.NoError(t, err)
-
-	assert.Len(t, users, 1)
-
-	user := users[0]
-	assert.NotEqual(t, 0, user.ID)
-	assertUsersEqual(t, mockUser, user)
-}
-
-func TestMatchingUserReturnsMatchingUser(t *testing.T) {
-	_, testDB := test.InitDB(t, migrationsDir)
-
-	mockUser := test.MockUser(t)
-	err := testDB.SaveUser(mockUser)
-	assert.NoError(t, err)
-
-	user, err := testDB.MatchingUser(mockUser)
-	assert.NoError(t, err)
-
-	assert.NotEqual(t, 0, user.ID)
-	assertUsersEqual(t, mockUser, user)
-}
-
-func TestMatchingUserReturnsNilWhenNoMatchingUserExists(t *testing.T) {
-	_, testDB := test.InitDB(t, migrationsDir)
-
-	mockUser := test.MockUser(t)
-
-	user, err := testDB.MatchingUser(mockUser)
-	assert.NoError(t, err)
-	assert.Nil(t, user)
-}
-
 func TestSaveUserUpdatesExistingUserWithTheSameID(t *testing.T) {
 	_, testDB := test.InitDB(t, migrationsDir)
 
@@ -173,11 +132,12 @@ func TestSaveUserUpdatesExistingUserWithTheSameID(t *testing.T) {
 	err = testDB.SaveUser(mockUser)
 	assert.NoError(t, err)
 
-	user, err := testDB.MatchingUser(mockUser)
+	var user user.User
+	err = testDB.Find(&user, query.NewClause("where username = ?", mockUser.Username))
 	assert.NoError(t, err)
 
 	assert.Equal(t, mockUser.ID, user.ID)
-	assertUsersEqual(t, mockUser, user)
+	assertUsersEqual(t, mockUser, &user)
 }
 
 func TestFeeds(t *testing.T) {

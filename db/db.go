@@ -22,7 +22,6 @@ type DB interface {
 	All(interface{}) error
 	Find(interface{}, ...*query.Clause) error
 	Save(interface{}) error
-	MatchingUser(*user.User) (*user.User, error)
 	SaveUser(*user.User) error
 	Feeds() ([]*feed.Feed, error)
 	MatchingFeed(*feed.Feed) (*feed.Feed, error)
@@ -82,16 +81,6 @@ func (sdb *sqlDB) Find(ptr interface{}, clauses ...*query.Clause) error {
 
 func (sdb *sqlDB) Save(ptr interface{}) error {
 	return sdb.client().Save(ptr)
-}
-
-func (sdb *sqlDB) MatchingUser(u *user.User) (*user.User, error) {
-	var user user.User
-	err := sdb.client().Find(&user, query.NewClause("where username = ?", u.Username))
-	if errors.Is(err, query.ErrModelNotFound) {
-		return nil, nil
-	}
-
-	return &user, errors.Wrap(err, "failed to get matching user")
 }
 
 func (sdb *sqlDB) SaveUser(u *user.User) error {

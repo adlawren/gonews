@@ -315,14 +315,14 @@ func main() {
 	}
 
 	if len(*matchingUser) > 0 {
-		var user user.User
+		var user, match user.User
 		err := json.Unmarshal([]byte(*matchingUser), &user)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to unmarshal user")
 			return
 		}
 
-		match, err := adb.MatchingUser(&user)
+		err = adb.Find(&match, query.NewClause("where username = ?", user.Username))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get matching user")
 			return
