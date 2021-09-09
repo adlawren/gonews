@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"gonews/config"
 	"gonews/db"
+	"gonews/db/orm/query"
 	"gonews/feed"
 	"gonews/lib"
 	"gonews/middleware"
@@ -118,7 +119,8 @@ func hideHandlerFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item, err := db.Item(uint(id))
+	var item feed.Item
+	err = db.Find(&item, query.NewClause("where id = ?", uint(id)))
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get item from ID")
 		return
@@ -126,7 +128,7 @@ func hideHandlerFunc(w http.ResponseWriter, r *http.Request) {
 
 	item.Hide = true
 
-	err = db.SaveItem(item)
+	err = db.SaveItem(&item)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to update item")
 		return

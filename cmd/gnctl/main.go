@@ -258,7 +258,8 @@ func main() {
 	}
 
 	if *itemID != 0 {
-		item, err := adb.Item(*itemID)
+		var item feed.Item
+		err := adb.Find(&item, query.NewClause("where id = ?", *itemID))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get item")
 			return
