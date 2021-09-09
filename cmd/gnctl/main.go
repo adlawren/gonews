@@ -95,7 +95,7 @@ func saveModels(db db.DB, i interface{}) error {
 	for i := 0; i < iVal.Len(); i++ {
 		err := db.Save(iVal.Index(i).Interface())
 		if err != nil {
-			return fmt.Errorf("failed to save model: %w")
+			return fmt.Errorf("failed to save model: %w", err)
 		}
 	}
 
