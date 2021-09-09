@@ -158,7 +158,7 @@ func WatchFeeds(ctx context.Context, cfg *config.Config, dbCfg *config.DBConfig)
 		}
 
 		lastFetched.T = time.Now()
-		err = db.SaveTimestamp(&lastFetched)
+		err = db.Save(&lastFetched)
 		if err != nil {
 			return errors.Wrap(err, "failed to update timestamp")
 		}
@@ -222,7 +222,7 @@ func AutoDismissItems(ctx context.Context, cfg *config.Config, dbCfg *config.DBC
 		}
 
 		lastAutoDismissed.T = time.Now()
-		err = db.SaveTimestamp(&lastAutoDismissed)
+		err = db.Save(&lastAutoDismissed)
 		if err != nil {
 			return errors.Wrap(err, "failed to update timestamp")
 		}

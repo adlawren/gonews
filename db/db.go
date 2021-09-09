@@ -6,7 +6,6 @@ import (
 	"gonews/db/orm/client"
 	"gonews/db/orm/query"
 	"gonews/feed"
-	"gonews/timestamp"
 	"gonews/user"
 	"os"
 
@@ -22,7 +21,6 @@ type DB interface {
 	Migrate(string) error
 	Find(interface{}, ...*query.Clause) error
 	Save(interface{}) error
-	SaveTimestamp(*timestamp.Timestamp) error
 	Users() ([]*user.User, error)
 	MatchingUser(*user.User) (*user.User, error)
 	SaveUser(*user.User) error
@@ -80,10 +78,6 @@ func (sdb *sqlDB) Find(ptr interface{}, clauses ...*query.Clause) error {
 
 func (sdb *sqlDB) Save(ptr interface{}) error {
 	return sdb.client().Save(ptr)
-}
-
-func (sdb *sqlDB) SaveTimestamp(ts *timestamp.Timestamp) error {
-	return errors.Wrap(sdb.client().Save(ts), "failed to save timestamp")
 }
 
 func (sdb *sqlDB) Users() ([]*user.User, error) {
