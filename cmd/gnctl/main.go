@@ -185,7 +185,8 @@ func main() {
 	}
 
 	if *showFeeds {
-		feeds, err := adb.Feeds()
+		var feeds []*feed.Feed
+		err := adb.All(&feeds)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get feeds")
 			return

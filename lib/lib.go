@@ -66,7 +66,8 @@ func InsertMissingFeeds(cfg *config.Config, db db.DB) error {
 }
 
 func fetchFeeds(db db.DB, p parser.Parser) error {
-	feeds, err := db.Feeds()
+	var feeds []*feed.Feed
+	err := db.All(&feeds)
 	if err != nil {
 		return errors.Wrap(err, "failed to get feeds")
 	}

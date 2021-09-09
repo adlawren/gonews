@@ -94,7 +94,12 @@ func TestFetchFeedsReturnsErrorWhenFeedsReturnsError(t *testing.T) {
 	parser := mock_parser.NewMockParser(ctrl)
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().Feeds().Return(nil, mockErr)
+	db.EXPECT().All(gomock.Any()).DoAndReturn(func(ptr interface{}) error {
+		_, ok := ptr.(*[]*feed.Feed)
+		assert.True(t, ok)
+
+		return mockErr
+	})
 
 	err := fetchFeeds(db, parser)
 	expectedErrMsg := fmt.Sprintf(
@@ -113,7 +118,14 @@ func TestFetchFeedsReturnsErrorWhenFeedParseFails(t *testing.T) {
 	parser.EXPECT().ParseURL(mockFeeds[0].URL).Return(nil, mockErr)
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().Feeds().Return(mockFeeds, nil)
+	db.EXPECT().All(gomock.Any()).DoAndReturn(func(ptr interface{}) error {
+		feeds, ok := ptr.(*[]*feed.Feed)
+		assert.True(t, ok)
+
+		*feeds = mockFeeds
+
+		return nil
+	})
 
 	err := fetchFeeds(db, parser)
 	expectedErrMsg := fmt.Sprintf(
@@ -133,7 +145,14 @@ func TestFetchFeedsReturnsErrorWhenItemSaveFails(t *testing.T) {
 	parser.EXPECT().ParseURL(mockFeeds[0].URL).Return(mockFeedItems, nil)
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().Feeds().Return(mockFeeds, nil)
+	db.EXPECT().All(gomock.Any()).DoAndReturn(func(ptr interface{}) error {
+		feeds, ok := ptr.(*[]*feed.Feed)
+		assert.True(t, ok)
+
+		*feeds = mockFeeds
+
+		return nil
+	})
 	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, nil)
 	db.EXPECT().SaveItem(gomock.Any()).Return(mockErr)
 
@@ -155,7 +174,14 @@ func TestFetchFeedsReturnsErrorWhenMatchingItemFails(t *testing.T) {
 	parser.EXPECT().ParseURL(mockFeeds[0].URL).Return(mockFeedItems, nil)
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().Feeds().Return(mockFeeds, nil)
+	db.EXPECT().All(gomock.Any()).DoAndReturn(func(ptr interface{}) error {
+		feeds, ok := ptr.(*[]*feed.Feed)
+		assert.True(t, ok)
+
+		*feeds = mockFeeds
+
+		return nil
+	})
 	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, mockErr)
 
 	err := fetchFeeds(db, parser)
@@ -176,7 +202,14 @@ func TestFetchFeedsSavesItems(t *testing.T) {
 	parser.EXPECT().ParseURL(mockFeeds[1].URL).Return(mockFeedItems, nil)
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().Feeds().Return(mockFeeds, nil)
+	db.EXPECT().All(gomock.Any()).DoAndReturn(func(ptr interface{}) error {
+		feeds, ok := ptr.(*[]*feed.Feed)
+		assert.True(t, ok)
+
+		*feeds = mockFeeds
+
+		return nil
+	})
 	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, nil)
 	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
 	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, nil)
@@ -203,7 +236,14 @@ func TestFetchFeedsSkipsMatchingItems(t *testing.T) {
 	parser.EXPECT().ParseURL(mockFeeds[1].URL).Return(mockFeedItems, nil)
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().Feeds().Return(mockFeeds, nil)
+	db.EXPECT().All(gomock.Any()).DoAndReturn(func(ptr interface{}) error {
+		feeds, ok := ptr.(*[]*feed.Feed)
+		assert.True(t, ok)
+
+		*feeds = mockFeeds
+
+		return nil
+	})
 	db.EXPECT().MatchingItem(gomock.Any()).Return(item1, nil)
 	db.EXPECT().MatchingItem(gomock.Any()).Return(item2, nil)
 	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, nil)
@@ -227,7 +267,14 @@ func TestFetchFeedsOmitsItemsAfterItemLimit(t *testing.T) {
 	parser.EXPECT().ParseURL(mockFeed.URL).Return(mockFeedItems, nil)
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().Feeds().Return([]*feed.Feed{mockFeed}, nil)
+	db.EXPECT().All(gomock.Any()).DoAndReturn(func(ptr interface{}) error {
+		feeds, ok := ptr.(*[]*feed.Feed)
+		assert.True(t, ok)
+
+		*feeds = []*feed.Feed{mockFeed}
+
+		return nil
+	})
 	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, nil)
 	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
 
@@ -247,7 +294,14 @@ func TestFetchFeedsDoesNotOmitItemsIfSliceIsTooSmall(t *testing.T) {
 	parser.EXPECT().ParseURL(mockFeed.URL).Return(mockFeedItems, nil)
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().Feeds().Return([]*feed.Feed{mockFeed}, nil)
+	db.EXPECT().All(gomock.Any()).DoAndReturn(func(ptr interface{}) error {
+		feeds, ok := ptr.(*[]*feed.Feed)
+		assert.True(t, ok)
+
+		*feeds = []*feed.Feed{mockFeed}
+
+		return nil
+	})
 	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, nil)
 	db.EXPECT().SaveItem(gomock.Any()).Return(nil)
 	db.EXPECT().MatchingItem(gomock.Any()).Return(nil, nil)

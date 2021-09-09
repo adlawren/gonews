@@ -120,23 +120,6 @@ func TestSaveItemDoesNotChangeCreatedAtDuringUpdate(t *testing.T) {
 	assert.Equal(t, createdAt, itemCopy.CreatedAt)
 }
 
-func TestFeeds(t *testing.T) {
-	_, testDB := test.InitDB(t, migrationsDir)
-
-	mockFeed := test.MockFeed()
-	err := testDB.SaveFeed(mockFeed)
-	assert.NoError(t, err)
-
-	feeds, err := testDB.Feeds()
-	assert.NoError(t, err)
-
-	assert.Len(t, feeds, 1)
-
-	feed := feeds[0]
-	assert.NotEqual(t, 0, feed.ID)
-	assertFeedsEqual(t, mockFeed, feed)
-}
-
 func TestSaveFeedInsertsNewFeed(t *testing.T) {
 	_, testDB := test.InitDB(t, migrationsDir)
 
@@ -144,7 +127,8 @@ func TestSaveFeedInsertsNewFeed(t *testing.T) {
 	err := testDB.SaveFeed(mockFeed)
 	assert.NoError(t, err)
 
-	feeds, err := testDB.Feeds()
+	var feeds []*feed.Feed
+	err = testDB.All(&feeds)
 	assert.NoError(t, err)
 
 	assert.Len(t, feeds, 1)
@@ -165,7 +149,8 @@ func TestSaveFeedUpdatesExistingFeed(t *testing.T) {
 	err = testDB.SaveFeed(mockFeed)
 	assert.NoError(t, err)
 
-	feeds, err := testDB.Feeds()
+	var feeds []*feed.Feed
+	err = testDB.All(&feeds)
 	assert.NoError(t, err)
 
 	assert.Len(t, feeds, 1)

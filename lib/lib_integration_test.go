@@ -120,7 +120,8 @@ func TestWatchFeeds(t *testing.T) {
 
 	time.Sleep(d)
 
-	feeds, err := db.Feeds()
+	var feeds []*feed.Feed
+	err = db.All(&feeds)
 	assert.NoError(t, err)
 	assert.Equal(t, len(expectedFeeds), len(feeds))
 	for i := 0; i < len(feeds); i++ {
