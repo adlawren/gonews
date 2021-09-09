@@ -2,7 +2,6 @@ package db_test // 'db_test' instead of 'db' to prevent gonews/test <- gonews/db
 
 import (
 	"fmt"
-	"gonews/db/orm/query"
 	"gonews/feed"
 	"gonews/test"
 	"gonews/user"
@@ -119,25 +118,6 @@ func TestSaveItemDoesNotChangeCreatedAtDuringUpdate(t *testing.T) {
 
 	itemCopy := items[0]
 	assert.Equal(t, createdAt, itemCopy.CreatedAt)
-}
-
-func TestSaveUserUpdatesExistingUserWithTheSameID(t *testing.T) {
-	_, testDB := test.InitDB(t, migrationsDir)
-
-	mockUser := test.MockUser(t)
-	err := testDB.SaveUser(mockUser)
-	assert.NoError(t, err)
-
-	mockUser.Username = "different_username"
-	err = testDB.SaveUser(mockUser)
-	assert.NoError(t, err)
-
-	var user user.User
-	err = testDB.Find(&user, query.NewClause("where username = ?", mockUser.Username))
-	assert.NoError(t, err)
-
-	assert.Equal(t, mockUser.ID, user.ID)
-	assertUsersEqual(t, mockUser, &user)
 }
 
 func TestFeeds(t *testing.T) {

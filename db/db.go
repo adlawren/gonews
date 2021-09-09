@@ -6,7 +6,6 @@ import (
 	"gonews/db/orm/client"
 	"gonews/db/orm/query"
 	"gonews/feed"
-	"gonews/user"
 	"os"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -22,7 +21,6 @@ type DB interface {
 	All(interface{}) error
 	Find(interface{}, ...*query.Clause) error
 	Save(interface{}) error
-	SaveUser(*user.User) error
 	Feeds() ([]*feed.Feed, error)
 	MatchingFeed(*feed.Feed) (*feed.Feed, error)
 	SaveFeed(*feed.Feed) error
@@ -81,10 +79,6 @@ func (sdb *sqlDB) Find(ptr interface{}, clauses ...*query.Clause) error {
 
 func (sdb *sqlDB) Save(ptr interface{}) error {
 	return sdb.client().Save(ptr)
-}
-
-func (sdb *sqlDB) SaveUser(u *user.User) error {
-	return errors.Wrap(sdb.client().Save(u), "failed to save user")
 }
 
 func (sdb *sqlDB) Feeds() ([]*feed.Feed, error) {

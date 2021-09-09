@@ -70,11 +70,10 @@ func TestAuthMiddlewareCallsNextHandlerWhenCredsValid(t *testing.T) {
 	mockPassword := test.MockPassword()
 	mockPasswordHash, err := auth.Hash(mockPassword)
 
-	db.SaveUser(
-		&user.User{
-			Username:     mockUsername,
-			PasswordHash: mockPasswordHash,
-		})
+	db.Save(&user.User{
+		Username:     mockUsername,
+		PasswordHash: mockPasswordHash,
+	})
 
 	req.SetBasicAuth(mockUsername, mockPassword)
 
