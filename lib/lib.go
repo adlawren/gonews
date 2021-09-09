@@ -41,14 +41,12 @@ func InsertMissingFeeds(cfg *config.Config, db db.DB) error {
 				FeedID: f.ID,
 			}
 
-			existingTag, err := db.MatchingTag(t)
-			if err != nil {
+			var existingTag feed.Tag
+			err = db.Find(&existingTag, query.NewClause("where name = ?", t.Name))
+			if err != nil && !errors.Is(err, query.ErrModelNotFound) {
 				return errors.Wrap(
 					err,
 					"failed to get matching tag")
-			}
-			if existingTag != nil {
-				continue
 			}
 
 			err = db.SaveTag(t)

@@ -359,14 +359,14 @@ func main() {
 	}
 
 	if len(*matchingTag) > 0 {
-		var tag feed.Tag
+		var tag, match feed.Tag
 		err := json.Unmarshal([]byte(*matchingTag), &tag)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to unmarshal tag")
 			return
 		}
 
-		match, err := adb.MatchingTag(&tag)
+		err = adb.Find(&match, query.NewClause("where name = ?", tag.Name))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get matching tag")
 			return
