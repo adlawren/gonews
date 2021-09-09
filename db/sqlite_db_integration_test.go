@@ -46,7 +46,8 @@ func TestSaveItemInsertsNewItem(t *testing.T) {
 	err := testDB.SaveItem(mockItem)
 	assert.NoError(t, err)
 
-	items, err := testDB.Items()
+	var items []*feed.Item
+	err = testDB.All(&items)
 	assert.NoError(t, err)
 
 	assert.Len(t, items, 1)
@@ -67,7 +68,8 @@ func TestSaveItemUpdatesExistingItem(t *testing.T) {
 	err = testDB.SaveItem(mockItem)
 	assert.NoError(t, err)
 
-	items, err := testDB.Items()
+	var items []*feed.Item
+	err = testDB.All(&items)
 	assert.NoError(t, err)
 
 	assert.Len(t, items, 1)
@@ -85,7 +87,8 @@ func TestSaveItemSetsCreatedAtToCurrentTimeForNewItem(t *testing.T) {
 	err := testDB.SaveItem(mockItem)
 	assert.NoError(t, err)
 
-	items, err := testDB.Items()
+	var items []*feed.Item
+	err = testDB.All(&items)
 	assert.NoError(t, err)
 
 	assert.Len(t, items, 1)
@@ -101,7 +104,8 @@ func TestSaveItemDoesNotChangeCreatedAtDuringUpdate(t *testing.T) {
 	err := testDB.SaveItem(mockItem)
 	assert.NoError(t, err)
 
-	items, err := testDB.Items()
+	var items []*feed.Item
+	err = testDB.All(&items)
 	assert.NoError(t, err)
 
 	assert.Len(t, items, 1)
@@ -111,12 +115,14 @@ func TestSaveItemDoesNotChangeCreatedAtDuringUpdate(t *testing.T) {
 
 	err = testDB.SaveItem(mockItem)
 	assert.NoError(t, err)
-	items, err = testDB.Items()
+
+	var items2 []*feed.Item
+	err = testDB.All(&items2)
 	assert.NoError(t, err)
 
-	assert.Len(t, items, 1)
+	assert.Len(t, items2, 1)
 
-	itemCopy := items[0]
+	itemCopy := items2[0]
 	assert.Equal(t, createdAt, itemCopy.CreatedAt)
 }
 

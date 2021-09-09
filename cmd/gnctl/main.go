@@ -215,7 +215,8 @@ func main() {
 	}
 
 	if *showItems {
-		items, err := adb.Items()
+		var items []*feed.Item
+		err := adb.All(&items)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get items")
 			return

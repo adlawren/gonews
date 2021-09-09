@@ -74,7 +74,8 @@ func itemsHandlerFunc(w http.ResponseWriter, r *http.Request) {
 
 	var items []*feed.Item
 	if tagName == "" {
-		items, err = db.Items()
+		var items []*feed.Item
+		err = db.All(&items)
 	} else {
 		items, err = db.ItemsFromTag(&feed.Tag{Name: tagName})
 	}
