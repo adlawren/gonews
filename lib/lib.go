@@ -49,7 +49,7 @@ func InsertMissingFeeds(cfg *config.Config, db db.DB) error {
 					"failed to get matching tag")
 			}
 
-			err = db.SaveTag(t)
+			err = db.Save(t)
 			if err != nil {
 				return errors.Wrap(err, "failed to save tag")
 			}

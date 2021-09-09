@@ -78,7 +78,7 @@ func TestInsertMissingFeedsReturnsErrorWhenTagSaveFails(t *testing.T) {
 	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
 	db.EXPECT().Save(gomock.Any()).Return(nil)
 	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
-	db.EXPECT().SaveTag(gomock.Any()).Return(mockErr)
+	db.EXPECT().Save(gomock.Any()).Return(mockErr)
 
 	err := InsertMissingFeeds(mockCfg, db)
 	expectedErrMsg := fmt.Sprintf(

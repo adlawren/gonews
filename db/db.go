@@ -22,7 +22,6 @@ type DB interface {
 	Find(interface{}, ...*query.Clause) error
 	FindAll(interface{}, ...*query.Clause) error
 	Save(interface{}) error
-	SaveTag(*feed.Tag) error
 	Items() ([]*feed.Item, error)
 	Item(id uint) (*feed.Item, error)
 	ItemsFromFeed(*feed.Feed) ([]*feed.Item, error)
@@ -79,10 +78,6 @@ func (sdb *sqlDB) FindAll(ptr interface{}, clauses ...*query.Clause) error {
 
 func (sdb *sqlDB) Save(ptr interface{}) error {
 	return sdb.client().Save(ptr)
-}
-
-func (sdb *sqlDB) SaveTag(t *feed.Tag) error {
-	return errors.Wrap(sdb.client().Save(t), "failed to save tag")
 }
 
 func (sdb *sqlDB) Items() ([]*feed.Item, error) {
