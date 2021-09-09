@@ -244,7 +244,8 @@ func main() {
 	}
 
 	if *feedID != 0 {
-		items, err := adb.ItemsFromFeed(&feed.Feed{ID: *feedID})
+		var items []*feed.Item
+		err := adb.FindAll(&items, query.NewClause("where feed_id = ?", *feedID))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get items")
 			return

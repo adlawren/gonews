@@ -137,10 +137,12 @@ func TestWatchFeeds(t *testing.T) {
 		assert.Equal(t, expectedTags[i].String(), tags[i].String())
 	}
 
-	var feed feed.Feed
-	err = db.Find(&feed, query.NewClause("where url = ?", expectedFeeds[0].URL))
+	var f feed.Feed
+	err = db.Find(&f, query.NewClause("where url = ?", expectedFeeds[0].URL))
 	assert.NoError(t, err)
-	items, err := db.ItemsFromFeed(&feed)
+
+	var items []*feed.Item
+	err = db.FindAll(&items, query.NewClause("where feed_id = ?", f.ID))
 	expectedItems := expectedItems()
 	assert.Equal(t, len(items), len(expectedItems))
 	for i := 0; i < len(items); i++ {
@@ -184,11 +186,12 @@ func TestAutoDismissItems(t *testing.T) {
 
 	time.Sleep(d)
 
-	var feed feed.Feed
-	err = db.Find(&feed, query.NewClause("where url = ?", testCfg.Feeds[0].URL))
+	var f feed.Feed
+	err = db.Find(&f, query.NewClause("where url = ?", testCfg.Feeds[0].URL))
 	assert.NoError(t, err)
 
-	items, err := db.ItemsFromFeed(&feed)
+	var items []*feed.Item
+	err = db.FindAll(&items, query.NewClause("where feed_id = ?", f.ID))
 	assert.NoError(t, err)
 	for _, item := range items {
 		assert.True(t, item.Hide)
@@ -236,11 +239,12 @@ func TestAutoDismissItemsIgnoresItemsYoungerThanAutoDismissAfter(t *testing.T) {
 
 	time.Sleep(d)
 
-	var feed feed.Feed
-	err = db.Find(&feed, query.NewClause("where url = ?", testCfg.Feeds[0].URL))
+	var f feed.Feed
+	err = db.Find(&f, query.NewClause("where url = ?", testCfg.Feeds[0].URL))
 	assert.NoError(t, err)
 
-	items, err := db.ItemsFromFeed(&feed)
+	var items []*feed.Item
+	err = db.FindAll(&items, query.NewClause("where feed_id = ?", f.ID))
 	assert.NoError(t, err)
 	for _, item := range items {
 		assert.False(t, item.Hide)

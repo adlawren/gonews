@@ -195,13 +195,14 @@ func AutoDismissItems(ctx context.Context, cfg *config.Config, dbCfg *config.DBC
 		}
 
 		for _, feedCfg := range cfg.Feeds {
-			var feed feed.Feed
-			err = db.Find(&feed, query.NewClause("where url = ?", feedCfg.URL))
+			var f feed.Feed
+			err = db.Find(&f, query.NewClause("where url = ?", feedCfg.URL))
 			if err != nil {
 				return errors.Wrap(err, "failed to get matching feed")
 			}
 
-			items, err := db.ItemsFromFeed(&feed)
+			var items []*feed.Item
+			err = db.FindAll(&items, query.NewClause("where feed_id = ?", f.ID))
 			if err != nil {
 				return errors.Wrap(err, "failed to get items from feed")
 			}
