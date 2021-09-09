@@ -200,7 +200,8 @@ func main() {
 	}
 
 	if *showTags {
-		tags, err := adb.Tags()
+		var tags []*feed.Tag
+		err := adb.All(&tags)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get tags")
 			return

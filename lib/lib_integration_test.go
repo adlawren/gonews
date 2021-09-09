@@ -129,7 +129,8 @@ func TestWatchFeeds(t *testing.T) {
 		assert.Equal(t, expectedFeeds[i].String(), feeds[i].String())
 	}
 
-	tags, err := db.Tags()
+	var tags []*feed.Tag
+	err = db.All(&tags)
 	assert.NoError(t, err)
 	assert.Equal(t, len(expectedTags), len(tags))
 	for i := 0; i < len(tags); i++ {
