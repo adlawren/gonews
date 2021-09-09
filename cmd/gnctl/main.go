@@ -8,6 +8,7 @@ import (
 	"gonews/auth"
 	"gonews/config"
 	"gonews/db"
+	"gonews/db/orm/query"
 	"gonews/feed"
 	"gonews/parser"
 	"gonews/timestamp"
@@ -292,14 +293,14 @@ func main() {
 	}
 
 	if len(*matchingTimestamp) > 0 {
-		var timestamp timestamp.Timestamp
+		var timestamp, match timestamp.Timestamp
 		err := json.Unmarshal([]byte(*matchingTimestamp), &timestamp)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to unmarshal timestamp")
 			return
 		}
 
-		match, err := adb.MatchingTimestamp(&timestamp)
+		err = adb.Find(&match, query.NewClause("where name = ?", timestamp.Name))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get matching timestamp")
 			return

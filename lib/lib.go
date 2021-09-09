@@ -4,6 +4,7 @@ import (
 	"context"
 	"gonews/config"
 	"gonews/db"
+	"gonews/db/orm/query"
 	"gonews/feed"
 	"gonews/parser"
 	"gonews/timestamp"
@@ -130,12 +131,13 @@ func WatchFeeds(ctx context.Context, cfg *config.Config, dbCfg *config.DBConfig)
 	}
 
 	fetchPeriod := cfg.FetchPeriod
-	lastFetched, err := db.MatchingTimestamp(&timestamp.Timestamp{Name: "feeds_fetched_at"})
-	if err != nil {
+	var lastFetched timestamp.Timestamp
+	err = db.Find(&lastFetched, query.NewClause("where name = 'feeds_fetched_at'"))
+	if errors.Is(err, query.ErrModelNotFound) {
+		lastFetched = timestamp.Timestamp{Name: "feeds_fetched_at"}
+
+	} else if err != nil {
 		return errors.Wrap(err, "failed to get matching timestamp")
-	}
-	if lastFetched == nil {
-		lastFetched = &timestamp.Timestamp{Name: "feeds_fetched_at"}
 	}
 
 	for {
@@ -156,7 +158,7 @@ func WatchFeeds(ctx context.Context, cfg *config.Config, dbCfg *config.DBConfig)
 		}
 
 		lastFetched.T = time.Now()
-		err = db.SaveTimestamp(lastFetched)
+		err = db.SaveTimestamp(&lastFetched)
 		if err != nil {
 			return errors.Wrap(err, "failed to update timestamp")
 		}
@@ -175,12 +177,12 @@ func AutoDismissItems(ctx context.Context, cfg *config.Config, dbCfg *config.DBC
 	defer db.Close()
 
 	autoDismissPeriod := cfg.AutoDismissPeriod
-	lastAutoDismissed, err := db.MatchingTimestamp(&timestamp.Timestamp{Name: "auto_dismissed_at"})
-	if err != nil {
+	var lastAutoDismissed timestamp.Timestamp
+	err = db.Find(&lastAutoDismissed, query.NewClause("where name = 'auto_dismissed_at'"))
+	if errors.Is(err, query.ErrModelNotFound) {
+		lastAutoDismissed = timestamp.Timestamp{Name: "auto_dismissed_at"}
+	} else if err != nil {
 		return errors.Wrap(err, "failed to get matching timestamp")
-	}
-	if lastAutoDismissed == nil {
-		lastAutoDismissed = &timestamp.Timestamp{Name: "auto_dismissed_at"}
 	}
 
 	for {
@@ -220,7 +222,7 @@ func AutoDismissItems(ctx context.Context, cfg *config.Config, dbCfg *config.DBC
 		}
 
 		lastAutoDismissed.T = time.Now()
-		err = db.SaveTimestamp(lastAutoDismissed)
+		err = db.SaveTimestamp(&lastAutoDismissed)
 		if err != nil {
 			return errors.Wrap(err, "failed to update timestamp")
 		}

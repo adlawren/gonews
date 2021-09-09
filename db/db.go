@@ -20,8 +20,8 @@ import (
 type DB interface {
 	Ping() error
 	Migrate(string) error
+	Find(interface{}, ...*query.Clause) error
 	Save(interface{}) error
-	MatchingTimestamp(*timestamp.Timestamp) (*timestamp.Timestamp, error)
 	SaveTimestamp(*timestamp.Timestamp) error
 	Users() ([]*user.User, error)
 	MatchingUser(*user.User) (*user.User, error)
@@ -74,18 +74,12 @@ func (sdb *sqlDB) client() client.Client {
 	return client.New(sdb.db)
 }
 
-func (sdb *sqlDB) Save(ptr interface{}) error {
-	return sdb.client().Save(ptr)
+func (sdb *sqlDB) Find(ptr interface{}, clauses ...*query.Clause) error {
+	return sdb.client().Find(ptr, clauses...)
 }
 
-func (sdb *sqlDB) MatchingTimestamp(ts *timestamp.Timestamp) (*timestamp.Timestamp, error) {
-	var timestamp timestamp.Timestamp
-	err := sdb.client().Find(&timestamp, query.NewClause("where name = ?", ts.Name))
-	if errors.Is(err, query.ErrModelNotFound) {
-		return nil, nil
-	}
-
-	return &timestamp, errors.Wrap(err, "failed to get matching timestamp")
+func (sdb *sqlDB) Save(ptr interface{}) error {
+	return sdb.client().Save(ptr)
 }
 
 func (sdb *sqlDB) SaveTimestamp(ts *timestamp.Timestamp) error {
