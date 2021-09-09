@@ -28,7 +28,7 @@ func InsertMissingFeeds(cfg *config.Config, db db.DB) error {
 			return errors.Wrap(err, "failed to get matching feed")
 		}
 
-		err = db.SaveFeed(f)
+		err = db.Save(f)
 		if err != nil {
 			return errors.Wrap(err, "failed to save feed")
 		}

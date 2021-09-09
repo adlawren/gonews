@@ -41,7 +41,7 @@ func TestInsertMissingFeedsReturnsErrorWhenFeedSaveFails(t *testing.T) {
 
 	db := mock_db.NewMockDB(ctrl)
 	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
-	db.EXPECT().SaveFeed(gomock.Any()).Return(mockErr)
+	db.EXPECT().Save(gomock.Any()).Return(mockErr)
 
 	err := InsertMissingFeeds(mockCfg, db)
 	expectedErrMsg := fmt.Sprintf(
@@ -58,7 +58,7 @@ func TestInsertMissingFeedsReturnsErrorWhenMatchingTagFails(t *testing.T) {
 
 	db := mock_db.NewMockDB(ctrl)
 	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
-	db.EXPECT().SaveFeed(gomock.Any()).Return(nil)
+	db.EXPECT().Save(gomock.Any()).Return(nil)
 	db.EXPECT().MatchingTag(gomock.Any()).Return(nil, mockErr)
 
 	err := InsertMissingFeeds(mockCfg, db)
@@ -76,7 +76,7 @@ func TestInsertMissingFeedsReturnsErrorWhenTagSaveFails(t *testing.T) {
 
 	db := mock_db.NewMockDB(ctrl)
 	db.EXPECT().Find(gomock.Any(), gomock.Any()).Return(query.ErrModelNotFound)
-	db.EXPECT().SaveFeed(gomock.Any()).Return(nil)
+	db.EXPECT().Save(gomock.Any()).Return(nil)
 	db.EXPECT().MatchingTag(gomock.Any()).Return(nil, nil)
 	db.EXPECT().SaveTag(gomock.Any()).Return(mockErr)
 

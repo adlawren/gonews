@@ -120,46 +120,6 @@ func TestSaveItemDoesNotChangeCreatedAtDuringUpdate(t *testing.T) {
 	assert.Equal(t, createdAt, itemCopy.CreatedAt)
 }
 
-func TestSaveFeedInsertsNewFeed(t *testing.T) {
-	_, testDB := test.InitDB(t, migrationsDir)
-
-	mockFeed := test.MockFeed()
-	err := testDB.SaveFeed(mockFeed)
-	assert.NoError(t, err)
-
-	var feeds []*feed.Feed
-	err = testDB.All(&feeds)
-	assert.NoError(t, err)
-
-	assert.Len(t, feeds, 1)
-
-	feed := feeds[0]
-	assert.NotEqual(t, 0, feed.ID)
-	assertFeedsEqual(t, mockFeed, feed)
-}
-
-func TestSaveFeedUpdatesExistingFeed(t *testing.T) {
-	_, testDB := test.InitDB(t, migrationsDir)
-
-	mockFeed := test.MockFeed()
-	err := testDB.SaveFeed(mockFeed)
-	assert.NoError(t, err)
-
-	mockFeed.URL = fmt.Sprintf("%s&updated=yes", mockFeed.URL)
-	err = testDB.SaveFeed(mockFeed)
-	assert.NoError(t, err)
-
-	var feeds []*feed.Feed
-	err = testDB.All(&feeds)
-	assert.NoError(t, err)
-
-	assert.Len(t, feeds, 1)
-
-	feed := feeds[0]
-	assert.NotEqual(t, 0, feed.ID)
-	assertFeedsEqual(t, mockFeed, feed)
-}
-
 func assertUsersEqual(t *testing.T, u1, u2 *user.User) {
 	assert.Equal(t, u1.Username, u2.Username)
 	assert.Equal(t, u1.PasswordHash, u2.PasswordHash)
