@@ -78,7 +78,7 @@ func itemsHandlerFunc(w http.ResponseWriter, r *http.Request) {
 		var items []*feed.Item
 		err = db.All(&items)
 	} else {
-		items, err = db.ItemsFromTag(&feed.Tag{Name: tagName})
+		err = db.FindAll(&items, query.NewClause("where feed_id in (select feed_id from tags where name = ?)", tagName))
 	}
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get items")

@@ -22,7 +22,6 @@ type DB interface {
 	Find(interface{}, ...*query.Clause) error
 	FindAll(interface{}, ...*query.Clause) error
 	Save(interface{}) error
-	ItemsFromTag(*feed.Tag) ([]*feed.Item, error)
 	MatchingItem(*feed.Item) (*feed.Item, error)
 	SaveItem(*feed.Item) error
 	Close() error
@@ -85,12 +84,6 @@ func (sdb *sqlDB) MatchingItem(i *feed.Item) (*feed.Item, error) {
 	}
 
 	return &item, errors.Wrap(err, "failed to get matching item")
-}
-
-func (sdb *sqlDB) ItemsFromTag(t *feed.Tag) ([]*feed.Item, error) {
-	var items []*feed.Item
-	err := sdb.client().FindAll(&items, query.NewClause("where feed_id in (select feed_id from tags where name = ?)", t.Name))
-	return items, errors.Wrap(err, "failed to find items")
 }
 
 func (sdb *sqlDB) SaveItem(i *feed.Item) error {

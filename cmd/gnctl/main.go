@@ -230,7 +230,8 @@ func main() {
 	}
 
 	if len(*tagName) > 0 {
-		items, err := adb.ItemsFromTag(&feed.Tag{Name: *tagName})
+		var items []*feed.Item
+		err := adb.FindAll(&items, query.NewClause("where feed_id in (select feed_id from tags where name = ?)", *tagName))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get items")
 			return
