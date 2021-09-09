@@ -170,7 +170,8 @@ func main() {
 	}
 
 	if *showUsers {
-		users, err := adb.Users()
+		var users []*user.User
+		err := adb.All(&users)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get users")
 			return

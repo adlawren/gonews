@@ -19,9 +19,9 @@ import (
 type DB interface {
 	Ping() error
 	Migrate(string) error
+	All(interface{}) error
 	Find(interface{}, ...*query.Clause) error
 	Save(interface{}) error
-	Users() ([]*user.User, error)
 	MatchingUser(*user.User) (*user.User, error)
 	SaveUser(*user.User) error
 	Feeds() ([]*feed.Feed, error)
@@ -72,17 +72,16 @@ func (sdb *sqlDB) client() client.Client {
 	return client.New(sdb.db)
 }
 
+func (sdb *sqlDB) All(ptr interface{}) error {
+	return sdb.client().All(ptr)
+}
+
 func (sdb *sqlDB) Find(ptr interface{}, clauses ...*query.Clause) error {
 	return sdb.client().Find(ptr, clauses...)
 }
 
 func (sdb *sqlDB) Save(ptr interface{}) error {
 	return sdb.client().Save(ptr)
-}
-
-func (sdb *sqlDB) Users() ([]*user.User, error) {
-	var users []*user.User
-	return users, errors.Wrap(sdb.client().All(&users), "failed to get users")
 }
 
 func (sdb *sqlDB) MatchingUser(u *user.User) (*user.User, error) {

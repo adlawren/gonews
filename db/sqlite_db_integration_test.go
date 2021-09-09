@@ -127,7 +127,8 @@ func TestUsers(t *testing.T) {
 	err := testDB.SaveUser(mockUser)
 	assert.NoError(t, err)
 
-	users, err := testDB.Users()
+	var users []*user.User
+	err = testDB.All(&users)
 	assert.NoError(t, err)
 
 	assert.Len(t, users, 1)
