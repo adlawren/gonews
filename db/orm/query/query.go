@@ -526,7 +526,7 @@ func Update(result interface{}) (Query, error) {
 	return &query, nil
 }
 
-// Upsert returns an upsert query which inserts the model into the appropriate table if it has an unspecified ID, and updates the model otherwise
+// Upsert returns an upsert query which inserts the model into the appropriate table if it has an unspecified ID, and updates it otherwise
 func Upsert(result interface{}) (Query, error) {
 	var query upsertQuery
 
