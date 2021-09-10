@@ -1,10 +1,10 @@
 package parser
 
 import (
+	"fmt"
 	"gonews/feed"
 
 	"github.com/mmcdole/gofeed"
-	"github.com/pkg/errors"
 )
 
 // Parser contains the method needed to parse a list of items from a given RSS
@@ -29,14 +29,14 @@ func (p *gfParser) ParseURL(feedURL string) ([]*feed.Item, error) {
 
 	gfeed, err := p.parser.ParseURL(feedURL)
 	if err != nil {
-		return items, errors.Wrap(err, "failed to parse feed")
+		return items, fmt.Errorf("failed to parse feed: %w", err)
 	}
 
 	for _, gitem := range gfeed.Items {
 		var i feed.Item
 		err := i.FromGofeedItem(gitem)
 		if err != nil {
-			return items, errors.Wrap(err, "failed to initialize item")
+			return items, fmt.Errorf("failed to initialize item: %w", err)
 		}
 
 		items = append(items, &i)
