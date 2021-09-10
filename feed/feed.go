@@ -1,7 +1,6 @@
 package feed
 
 import (
-	"errors"
 	"fmt"
 	"html"
 	"time"
@@ -73,7 +72,7 @@ func (i Item) String() string {
 // gofeed item
 func (i *Item) FromGofeedItem(gfi *gofeed.Item) error {
 	if i == nil || gfi == nil {
-		return errors.New("item pointer is nil")
+		return fmt.Errorf("item pointer is nil")
 	}
 
 	var name string
