@@ -2,6 +2,8 @@ package lib
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"gonews/config"
 	"gonews/db"
 	"gonews/db/orm/query"
@@ -10,7 +12,6 @@ import (
 	"gonews/timestamp"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
@@ -25,12 +26,12 @@ func InsertMissingFeeds(cfg *config.Config, db db.DB) error {
 		var existingFeed feed.Feed
 		err := db.Find(&existingFeed, query.NewClause("where url = ?", f.URL))
 		if err != nil && !errors.Is(err, query.ErrModelNotFound) {
-			return errors.Wrap(err, "failed to get matching feed")
+			return fmt.Errorf("failed to get matching feed: %w", err)
 		}
 
 		err = db.Save(f)
 		if err != nil {
-			return errors.Wrap(err, "failed to save feed")
+			return fmt.Errorf("failed to save feed: %w", err)
 		}
 
 		log.Debug().Msgf("inserted: %s", f)
@@ -44,14 +45,12 @@ func InsertMissingFeeds(cfg *config.Config, db db.DB) error {
 			var existingTag feed.Tag
 			err = db.Find(&existingTag, query.NewClause("where name = ?", t.Name))
 			if err != nil && !errors.Is(err, query.ErrModelNotFound) {
-				return errors.Wrap(
-					err,
-					"failed to get matching tag")
+				return fmt.Errorf("failed to get matching tag: %w", err)
 			}
 
 			err = db.Save(t)
 			if err != nil {
-				return errors.Wrap(err, "failed to save tag")
+				return fmt.Errorf("failed to save tag: %w", err)
 			}
 
 			log.Debug().Msgf("inserted: %s", t)
@@ -65,13 +64,13 @@ func fetchFeeds(db db.DB, p parser.Parser) error {
 	var feeds []*feed.Feed
 	err := db.All(&feeds)
 	if err != nil {
-		return errors.Wrap(err, "failed to get feeds")
+		return fmt.Errorf("failed to get feeds: %w", err)
 	}
 
 	for _, f := range feeds {
 		items, err := p.ParseURL(f.URL)
 		if err != nil {
-			return errors.Wrap(err, "failed to parse feed")
+			return fmt.Errorf("failed to parse feed: %w", err)
 		}
 
 		if len(items) == 0 {
@@ -89,9 +88,7 @@ func fetchFeeds(db db.DB, p parser.Parser) error {
 			var existingItem feed.Item
 			err = db.Find(&existingItem, query.NewClause("where link = ?", item.Link))
 			if err != nil && !errors.Is(err, query.ErrModelNotFound) {
-				return errors.Wrap(
-					err,
-					"failed to get matching item")
+				return fmt.Errorf("failed to get matching item: %w", err)
 			} else if err == nil {
 				log.Info().Msgf("skipping: %s", item)
 				continue
@@ -101,7 +98,7 @@ func fetchFeeds(db db.DB, p parser.Parser) error {
 
 			err = db.Save(item)
 			if err != nil {
-				return errors.Wrap(err, "failed to save item")
+				return fmt.Errorf("failed to save item: %w", err)
 			}
 
 			log.Debug().Msgf("inserted: %s", item)
@@ -116,14 +113,14 @@ func fetchFeeds(db db.DB, p parser.Parser) error {
 func WatchFeeds(ctx context.Context, cfg *config.Config, dbCfg *config.DBConfig) error {
 	db, err := db.New(dbCfg)
 	if err != nil {
-		return errors.Wrap(err, "failed to create db client")
+		return fmt.Errorf("failed to create db client: %w", err)
 	}
 
 	defer db.Close()
 
 	parser, err := parser.New()
 	if err != nil {
-		return errors.Wrap(err, "failed to create feed parser")
+		return fmt.Errorf("failed to create feed parser: %w", err)
 	}
 
 	fetchPeriod := cfg.FetchPeriod
@@ -133,7 +130,7 @@ func WatchFeeds(ctx context.Context, cfg *config.Config, dbCfg *config.DBConfig)
 		lastFetched = timestamp.Timestamp{Name: "feeds_fetched_at"}
 
 	} else if err != nil {
-		return errors.Wrap(err, "failed to get matching timestamp")
+		return fmt.Errorf("failed to get matching timestamp: %w", err)
 	}
 
 	for {
@@ -150,13 +147,13 @@ func WatchFeeds(ctx context.Context, cfg *config.Config, dbCfg *config.DBConfig)
 
 		err := fetchFeeds(db, parser)
 		if err != nil {
-			return errors.Wrap(err, "failed to fetch feeds")
+			return fmt.Errorf("failed to fetch feeds: %w", err)
 		}
 
 		lastFetched.T = time.Now()
 		err = db.Save(&lastFetched)
 		if err != nil {
-			return errors.Wrap(err, "failed to update timestamp")
+			return fmt.Errorf("failed to update timestamp: %w", err)
 		}
 	}
 
@@ -167,7 +164,7 @@ func WatchFeeds(ctx context.Context, cfg *config.Config, dbCfg *config.DBConfig)
 func AutoDismissItems(ctx context.Context, cfg *config.Config, dbCfg *config.DBConfig) error {
 	db, err := db.New(dbCfg)
 	if err != nil {
-		return errors.Wrap(err, "failed to create db client")
+		return fmt.Errorf("failed to create db client: %w", err)
 	}
 
 	defer db.Close()
@@ -178,7 +175,7 @@ func AutoDismissItems(ctx context.Context, cfg *config.Config, dbCfg *config.DBC
 	if errors.Is(err, query.ErrModelNotFound) {
 		lastAutoDismissed = timestamp.Timestamp{Name: "auto_dismissed_at"}
 	} else if err != nil {
-		return errors.Wrap(err, "failed to get matching timestamp")
+		return fmt.Errorf("failed to get matching timestamp: %w", err)
 	}
 
 	for {
@@ -197,13 +194,13 @@ func AutoDismissItems(ctx context.Context, cfg *config.Config, dbCfg *config.DBC
 			var f feed.Feed
 			err = db.Find(&f, query.NewClause("where url = ?", feedCfg.URL))
 			if err != nil {
-				return errors.Wrap(err, "failed to get matching feed")
+				return fmt.Errorf("failed to get matching feed: %w", err)
 			}
 
 			var items []*feed.Item
 			err = db.FindAll(&items, query.NewClause("where feed_id = ?", f.ID))
 			if err != nil {
-				return errors.Wrap(err, "failed to get items from feed")
+				return fmt.Errorf("failed to get items from feed: %w", err)
 			}
 
 			for _, item := range items {
@@ -214,7 +211,7 @@ func AutoDismissItems(ctx context.Context, cfg *config.Config, dbCfg *config.DBC
 				item.Hide = true
 				err := db.Save(item)
 				if err != nil {
-					return errors.Wrap(err, "failed to save item")
+					return fmt.Errorf("failed to save item: %w", err)
 				}
 			}
 		}
@@ -222,7 +219,7 @@ func AutoDismissItems(ctx context.Context, cfg *config.Config, dbCfg *config.DBC
 		lastAutoDismissed.T = time.Now()
 		err = db.Save(&lastAutoDismissed)
 		if err != nil {
-			return errors.Wrap(err, "failed to update timestamp")
+			return fmt.Errorf("failed to update timestamp: %w", err)
 		}
 	}
 
