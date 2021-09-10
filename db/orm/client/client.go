@@ -2,9 +2,8 @@ package client
 
 import (
 	"database/sql"
+	"fmt"
 	"gonews/db/orm/query"
-
-	"github.com/pkg/errors"
 )
 
 type Client interface {
@@ -36,28 +35,43 @@ func (c *client) All(ptr interface{}) error {
 func (c *client) Find(ptr interface{}, clauses ...*query.Clause) error {
 	query, err := query.SelectOne(ptr, clauses...)
 	if err != nil {
-		return errors.Wrap(err, "failed to create query")
+		return fmt.Errorf("failed to create query: %w", err)
 	}
 
-	return errors.Wrap(query.Exec(c.db), "failed to execute query")
+	err = query.Exec(c.db)
+	if err != nil {
+		return fmt.Errorf("failed to execute query: %w", err)
+	}
+
+	return nil
 }
 
 // FindAll fetches the models from the appropriate table and assigns the result to the given interface, subject to the given query clauses
 func (c *client) FindAll(ptr interface{}, clauses ...*query.Clause) error {
 	query, err := query.Select(ptr, clauses...)
 	if err != nil {
-		return errors.Wrap(err, "failed to create query")
+		return fmt.Errorf("failed to create query: %w", err)
 	}
 
-	return errors.Wrap(query.Exec(c.db), "failed to execute query")
+	err = query.Exec(c.db)
+	if err != nil {
+		return fmt.Errorf("failed to execute query: %w", err)
+	}
+
+	return nil
 }
 
 // Save inserts the model into the appropriate table if it has an unspecified ID, and updates it otherwise
 func (c *client) Save(ptr interface{}) error {
 	query, err := query.Upsert(ptr)
 	if err != nil {
-		return errors.Wrap(err, "failed to create query")
+		return fmt.Errorf("failed to create query: %w", err)
 	}
 
-	return errors.Wrap(query.Exec(c.db), "failed to execute query")
+	err = query.Exec(c.db)
+	if err != nil {
+		return fmt.Errorf("failed to execute query: %w", err)
+	}
+
+	return nil
 }
