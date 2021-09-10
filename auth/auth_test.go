@@ -1,7 +1,6 @@
 package auth_test // 'auth_test' instead of 'auth' to prevent gonews/test <- gonews/auth <- gonews/test import cycle
 
 import (
-	"errors"
 	"fmt"
 	"gonews/auth"
 	"gonews/db/orm/query"
@@ -16,7 +15,7 @@ import (
 )
 
 var (
-	mockErr      = errors.New("mock error")
+	mockErr      = fmt.Errorf("mock error")
 	mockUsername = test.MockUsername()
 	mockPassword = test.MockPassword()
 )
