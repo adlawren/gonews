@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -382,5 +381,5 @@ func mockFeeds() []*feed.Feed {
 }
 
 func mockError() error {
-	return errors.New("mock error")
+	return fmt.Errorf("mock error")
 }
