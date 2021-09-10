@@ -7,14 +7,13 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
 func Serve(ctx context.Context, xmlPath string, port int) error {
 	_, err := os.Stat(xmlPath)
 	if err != nil {
-		return errors.Wrap(err, "failed to stat XML file")
+		return fmt.Errorf("failed to stat XML file: %w", err)
 	}
 
 	mux := http.NewServeMux()
@@ -39,7 +38,7 @@ func Serve(ctx context.Context, xmlPath string, port int) error {
 	case <-ctx.Done():
 		err = server.Shutdown(context.Background())
 		if err != nil {
-			return errors.Wrap(err, "failed to shutdown server")
+			return fmt.Errorf("failed to shutdown server: %w", err)
 		}
 	}
 
