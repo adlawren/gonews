@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -65,7 +64,6 @@ func TestWrapReturnsWrappedHandlerWhenMiddlewareProvided(t *testing.T) {
 	assert.Equal(t, expectedResponseText, string(res))
 }
 
-// TODO
 func TestWrapReturnsErrorWhenMiddlewareReturnsError(t *testing.T) {
 	handlerResponseText := "handler"
 	handler := mockHandler(handlerResponseText)
@@ -73,7 +71,7 @@ func TestWrapReturnsErrorWhenMiddlewareReturnsError(t *testing.T) {
 	middleware1ResponseText := "middleware1"
 	middleware1 := mockMiddleware(middleware1ResponseText)
 
-	mockErr := errors.New("mock error")
+	mockErr := fmt.Errorf("mock error")
 	var middleware2 MiddlewareFunc = func(h http.Handler) (http.Handler, error) {
 		return nil, mockErr
 	}
