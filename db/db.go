@@ -2,13 +2,13 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"gonews/config"
 	"gonews/db/orm/client"
 	"gonews/db/orm/query"
 	"os"
 
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/pkg/errors"
 	"github.com/pressly/goose"
 )
 
@@ -27,7 +27,11 @@ type DB interface {
 // New creates a struct which supports the operations in the DB interface
 func New(cfg *config.DBConfig) (DB, error) {
 	db, err := sql.Open("sqlite3", cfg.DSN)
-	return &sqlDB{db: db}, errors.Wrap(err, "failed to open DB")
+	if err != nil {
+		return nil, fmt.Errorf("failed to open DB: %w", err)
+	}
+
+	return &sqlDB{db: db}, nil
 }
 
 type sqlDB struct {
@@ -35,22 +39,31 @@ type sqlDB struct {
 }
 
 func (sdb *sqlDB) Ping() error {
-	return errors.Wrap(sdb.db.Ping(), "failed to ping DB")
+	err := sdb.db.Ping()
+	if err != nil {
+		return fmt.Errorf("failed to ping DB: %w", err)
+	}
+
+	return nil
 }
 
 func (sdb *sqlDB) Migrate(migrationsDir string) error {
 	_, err := os.Stat(migrationsDir)
 	if err != nil {
-		return errors.Wrap(err, "failed to stat migrations directory")
+		return fmt.Errorf("failed to stat migrations directory: %w", err)
 	}
 
 	err = goose.SetDialect("sqlite3")
 	if err != nil {
-		return errors.Wrap(err, "failed to set goose DB driver")
+		return fmt.Errorf("failed to set goose DB driver: %w", err)
 	}
 
 	err = goose.Up(sdb.db, migrationsDir)
-	return errors.Wrap(err, "migrations failed")
+	if err != nil {
+		return fmt.Errorf("migrations failed: %w", err)
+	}
+
+	return nil
 }
 
 func (sdb *sqlDB) client() client.Client {
@@ -75,5 +88,9 @@ func (sdb *sqlDB) Save(ptr interface{}) error {
 
 func (sdb *sqlDB) Close() error {
 	err := sdb.db.Close()
-	return errors.Wrap(err, "failed to close DB")
+	if err != nil {
+		return fmt.Errorf("failed to close DB: %w", err)
+	}
+
+	return nil
 }
