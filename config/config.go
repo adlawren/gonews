@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
 
@@ -53,13 +52,13 @@ func New(path, name string) (*Config, error) {
 	viper.SetConfigType("toml")
 	err := viper.ReadInConfig()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read config")
+		return nil, fmt.Errorf("failed to read config: %w", err)
 	}
 
 	var c Config
 	err = viper.Unmarshal(&c)
 	if err != nil {
-		return &c, errors.Wrap(err, "failed to unmarshal config")
+		return &c, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
 	return &c, nil
