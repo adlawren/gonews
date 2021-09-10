@@ -1,9 +1,8 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
-
-	"github.com/pkg/errors"
 )
 
 type MiddlewareFunc func(http.Handler) (http.Handler, error)
@@ -15,7 +14,7 @@ func Wrap(handler http.Handler, middleware ...MiddlewareFunc) (http.Handler, err
 
 	h, err := Wrap(handler, middleware[1:]...)
 	if err != nil {
-		return h, errors.Wrap(err, "failed to wrap handler")
+		return h, fmt.Errorf("failed to wrap handler: %w", err)
 	}
 
 	return middleware[0](h)
