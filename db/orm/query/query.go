@@ -6,14 +6,12 @@ import (
 	"reflect"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
-var ErrModelNotFound = errors.New("no matching model was found")
+var ErrModelNotFound = fmt.Errorf("no matching model was found")
 
-var ErrInvalidModelArg = errors.New("invalid argument; pointer to struct is required")
-var ErrInvalidModelsArg = errors.New("invalid argument; pointer to slice of pointers to structs is required")
+var ErrInvalidModelArg = fmt.Errorf("invalid argument; pointer to struct is required")
+var ErrInvalidModelsArg = fmt.Errorf("invalid argument; pointer to slice of pointers to structs is required")
 
 func isModel(inter interface{}) bool {
 	if reflect.TypeOf(inter).Kind() != reflect.Ptr {
@@ -148,16 +146,21 @@ func (q *query) addAll(clauses ...*Clause) {
 func exec(q Query, db *sql.DB) error {
 	tx, err := db.Begin()
 	if err != nil {
-		return errors.Wrap(err, "failed to create DB transaction")
+		return fmt.Errorf("failed to create DB transaction: %w", err)
 	}
 	defer tx.Rollback()
 
 	err = q.ExecTx(tx)
 	if err != nil {
-		return errors.Wrap(err, "failed to execute query")
+		return fmt.Errorf("failed to execute query: %w", err)
 	}
 
-	return errors.Wrap(tx.Commit(), "failed to commit DB transaction")
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("failed to commit DB transaction: %w", err)
+	}
+
+	return nil
 }
 
 type selectCountQuery struct {
@@ -172,27 +175,27 @@ func (q *selectCountQuery) ExecTx(tx *sql.Tx) error {
 	stmt, err := tx.Prepare(q.str)
 	defer stmt.Close()
 	if err != nil {
-		return errors.New("failed to prepare statement")
+		return fmt.Errorf("failed to prepare statement")
 	}
 
 	rows, err := stmt.Query(q.args...)
 	defer rows.Close()
 	if err != nil {
-		return errors.New("failed to execute query")
+		return fmt.Errorf("failed to execute query")
 	}
 
 	if !rows.Next() {
-		return errors.New("not result returned")
+		return fmt.Errorf("not result returned")
 	}
 
 	err = rows.Scan(q.result)
 	if err != nil {
-		return errors.New("failed to scan result")
+		return fmt.Errorf("failed to scan result")
 	}
 
 	err = rows.Err()
 	if err != nil {
-		return errors.Wrap(err, "cursor error")
+		return fmt.Errorf("cursor error: %w", err)
 	}
 
 	return nil
@@ -210,13 +213,13 @@ func (q *selectQuery) ExecTx(tx *sql.Tx) error {
 	stmt, err := tx.Prepare(q.str)
 	defer stmt.Close()
 	if err != nil {
-		return errors.Wrap(err, "failed to prepare statement")
+		return fmt.Errorf("failed to prepare statement: %w", err)
 	}
 
 	rows, err := stmt.Query(q.args...)
 	defer rows.Close()
 	if err != nil {
-		return errors.Wrap(err, "failed to execute query")
+		return fmt.Errorf("failed to execute query: %w", err)
 	}
 
 	val := reflect.Indirect(reflect.ValueOf(q.result))
@@ -230,7 +233,7 @@ func (q *selectQuery) ExecTx(tx *sql.Tx) error {
 
 		err = rows.Scan(fieldPointers...)
 		if err != nil {
-			return errors.Wrap(err, "failed to scan model")
+			return fmt.Errorf("failed to scan model: %w", err)
 		}
 
 		slicValue = reflect.Append(slicValue, modelValue.Addr())
@@ -238,7 +241,7 @@ func (q *selectQuery) ExecTx(tx *sql.Tx) error {
 
 	err = rows.Err()
 	if err != nil {
-		return errors.Wrap(err, "cursor error")
+		return fmt.Errorf("cursor error: %w", err)
 	}
 
 	val.Set(slicValue)
@@ -258,13 +261,13 @@ func (q *selectOneQuery) ExecTx(tx *sql.Tx) error {
 	stmt, err := tx.Prepare(q.str)
 	defer stmt.Close()
 	if err != nil {
-		return errors.Wrap(err, "failed to prepare statement")
+		return fmt.Errorf("failed to prepare statement: %w", err)
 	}
 
 	rows, err := stmt.Query(q.args...)
 	defer rows.Close()
 	if err != nil {
-		return errors.Wrap(err, "failed to execute prepared statement")
+		return fmt.Errorf("failed to execute prepared statement: %w", err)
 	}
 
 	if !rows.Next() {
@@ -280,12 +283,12 @@ func (q *selectOneQuery) ExecTx(tx *sql.Tx) error {
 
 	err = rows.Scan(fieldPointers...)
 	if err != nil {
-		return errors.Wrap(err, "failed to scan model")
+		return fmt.Errorf("failed to scan model: %w", err)
 	}
 
 	err = rows.Err()
 	if err != nil {
-		return errors.Wrap(err, "cursor error")
+		return fmt.Errorf("cursor error: %w", err)
 	}
 
 	return nil
@@ -337,25 +340,25 @@ func (q *insertQuery) ExecTx(tx *sql.Tx) error {
 	stmt, err := tx.Prepare(query)
 	defer stmt.Close()
 	if err != nil {
-		return errors.Wrap(err, "failed to prepare statement")
+		return fmt.Errorf("failed to prepare statement: %w", err)
 	}
 
 	res, err := stmt.Exec(fieldValues...)
 	if err != nil {
-		return errors.Wrap(err, "failed to execute prepared statement")
+		return fmt.Errorf("failed to execute prepared statement: %w", err)
 	}
 
 	count, err := res.RowsAffected()
 	if err != nil {
-		return errors.Wrap(err, "failed to get affected row count")
+		return fmt.Errorf("failed to get affected row count: %w", err)
 	}
 	if count != 1 {
-		return errors.New("expected one row to be affected")
+		return fmt.Errorf("expected one row to be affected")
 	}
 
 	id, err := res.LastInsertId()
 	if err != nil {
-		return errors.Wrap(err, "failed to get last inserted id")
+		return fmt.Errorf("failed to get last inserted id: %w", err)
 	}
 
 	resultVal.FieldByName("ID").Set(reflect.ValueOf(uint(id)))
@@ -403,20 +406,20 @@ func (q *updateQuery) ExecTx(tx *sql.Tx) error {
 	stmt, err := tx.Prepare(query)
 	defer stmt.Close()
 	if err != nil {
-		return errors.Wrap(err, "failed to prepare statement")
+		return fmt.Errorf("failed to prepare statement: %w", err)
 	}
 
 	res, err := stmt.Exec(fieldValues...)
 	if err != nil {
-		return errors.Wrap(err, "failed to execute prepared statement")
+		return fmt.Errorf("failed to execute prepared statement: %w", err)
 	}
 
 	count, err := res.RowsAffected()
 	if err != nil {
-		return errors.Wrap(err, "failed to get affected row count")
+		return fmt.Errorf("failed to get affected row count: %w", err)
 	}
 	if count != 1 {
-		return errors.New("expected one row to be affected")
+		return fmt.Errorf("expected one row to be affected")
 	}
 
 	return nil
@@ -437,7 +440,7 @@ func (q *upsertQuery) ExecTx(tx *sql.Tx) error {
 
 	err := selectCountFromQuery.ExecTx(tx)
 	if err != nil {
-		return errors.Wrap(err, "failed to execute query")
+		return fmt.Errorf("failed to execute query: %w", err)
 	}
 
 	var query Query
@@ -448,12 +451,12 @@ func (q *upsertQuery) ExecTx(tx *sql.Tx) error {
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "failed to create query")
+		return fmt.Errorf("failed to create query: %w", err)
 	}
 
 	err = query.ExecTx(tx)
 	if err != nil {
-		return errors.Wrap(err, "failed to execute query")
+		return fmt.Errorf("failed to execute query: %w", err)
 	}
 
 	return nil
