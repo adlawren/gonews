@@ -256,6 +256,21 @@ func TestSaveUpdatesExistingModel(t *testing.T) {
 	assertModelsEqual(t, &model, &matchingModel)
 }
 
+func TestSaveSetsID(t *testing.T) {
+	db := initDB(t)
+	client := New(db)
+
+	model := Model{
+		Bool:   true,
+		String: "abc",
+	}
+
+	err := client.Save(&model)
+	assert.NoError(t, err)
+
+	assert.NotZero(t, model.ID)
+}
+
 func TestSaveSetsCreatedAtIfPresent(t *testing.T) {
 	db := initDB(t)
 	createManagedFieldsModelsTable(t, db)
