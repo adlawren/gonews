@@ -327,17 +327,22 @@ func (q *insertQuery) ExecTx(tx *sql.Tx) error {
 		fieldValues = append(fieldValues, resultVal.Field(idx).Interface())
 	}
 
+	// For CreatedAt/UpdatedAt
+	now := time.Now()
+
 	// If a model has a CreatedAt field, set it to the current time
 	var zeroValue reflect.Value
 	if resultVal.FieldByName("CreatedAt") != zeroValue {
 		snakeFieldNames = append(snakeFieldNames, "created_at")
-		fieldValues = append(fieldValues, reflect.ValueOf(time.Now()).Interface())
+		fieldValues = append(fieldValues, reflect.ValueOf(now).Interface())
+		resultVal.FieldByName("CreatedAt").Set(reflect.ValueOf(now))
 	}
 
 	// If a model has an UpdatedAt field, set it to the current time
 	if resultVal.FieldByName("UpdatedAt") != zeroValue {
 		snakeFieldNames = append(snakeFieldNames, "updated_at")
-		fieldValues = append(fieldValues, reflect.ValueOf(time.Now()).Interface())
+		fieldValues = append(fieldValues, reflect.ValueOf(now).Interface())
+		resultVal.FieldByName("UpdatedAt").Set(reflect.ValueOf(now))
 	}
 
 	modelName := resultVal.Type().Name()
@@ -414,7 +419,10 @@ func (q *updateQuery) ExecTx(tx *sql.Tx) error {
 	var zeroValue reflect.Value
 	if resultVal.FieldByName("UpdatedAt") != zeroValue {
 		fieldNames = append(fieldNames, "UpdatedAt")
-		fieldValues = append(fieldValues, reflect.ValueOf(time.Now()).Interface())
+
+		now := time.Now()
+		fieldValues = append(fieldValues, reflect.ValueOf(now).Interface())
+		resultVal.FieldByName("UpdatedAt").Set(reflect.ValueOf(now))
 	}
 
 	fieldValues = append(fieldValues, resultVal.FieldByName("ID").Interface())

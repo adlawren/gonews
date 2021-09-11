@@ -270,13 +270,8 @@ func TestSaveSetsCreatedAtIfPresent(t *testing.T) {
 	err := client.Save(&model)
 	assert.NoError(t, err)
 
-	var matchingModel ManagedFieldsModel
-	err = client.Find(
-		&matchingModel,
-		query.NewClause("where string = ?", "abc"))
-
 	var zeroTime time.Time
-	assert.NotEqual(t, matchingModel.CreatedAt, zeroTime)
+	assert.NotEqual(t, model.CreatedAt, zeroTime)
 }
 
 func TestSaveUpdatesUpdatedAtIfPresent(t *testing.T) {
@@ -293,22 +288,13 @@ func TestSaveUpdatesUpdatedAtIfPresent(t *testing.T) {
 	err := client.Save(&model)
 	assert.NoError(t, err)
 
-	var matchingModel ManagedFieldsModel
-	err = client.Find(
-		&matchingModel,
-		query.NewClause("where string = ?", "abc"))
-
 	var zeroTime time.Time
-	assert.NotEqual(t, matchingModel.UpdatedAt, zeroTime)
+	assert.NotEqual(t, model.UpdatedAt, zeroTime)
 
-	previousUpdatedAt := matchingModel.UpdatedAt
+	previousUpdatedAt := model.UpdatedAt
 
 	err = client.Save(&model)
 	assert.NoError(t, err)
 
-	err = client.Find(
-		&matchingModel,
-		query.NewClause("where string = ?", "abc"))
-
-	assert.True(t, matchingModel.UpdatedAt.After(previousUpdatedAt))
+	assert.True(t, model.UpdatedAt.After(previousUpdatedAt))
 }
