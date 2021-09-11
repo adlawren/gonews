@@ -18,7 +18,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
@@ -39,7 +38,7 @@ func printModels(i interface{}) error {
 func printModel(model interface{}) error {
 	modelBytes, err := json.Marshal(model)
 	if err != nil {
-		return errors.Wrap(err, "failed to marshal json")
+		return fmt.Errorf("failed to marshal json: %w", err)
 	}
 	fmt.Println(string(modelBytes[:]))
 
