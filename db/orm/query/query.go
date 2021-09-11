@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+var ErrMissingIdField = fmt.Errorf("struct must contain ID field")
 var ErrModelNotFound = fmt.Errorf("no matching model was found")
 
 var ErrInvalidModelArg = fmt.Errorf("invalid argument; pointer to struct is required")
@@ -53,6 +54,16 @@ func modelType(model interface{}) reflect.Type {
 
 func modelsType(models interface{}) reflect.Type {
 	return reflect.Indirect(reflect.ValueOf(models)).Type().Elem().Elem()
+}
+
+func modelTypeHasID(model interface{}) bool {
+	_, found := modelType(model).FieldByName("ID")
+	return found
+}
+
+func modelsTypeHasID(models interface{}) bool {
+	_, found := modelsType(models).FieldByName("ID")
+	return found
 }
 
 func isUpper(b byte) bool {
@@ -513,6 +524,10 @@ func Select(result interface{}, clauses ...*Clause) (Query, error) {
 		return &query, ErrInvalidModelsArg
 	}
 
+	if !modelsTypeHasID(result) {
+		return &query, ErrMissingIdField
+	}
+
 	query.str = fmt.Sprintf("select * from %s", modelsTable(result))
 	query.result = result
 	query.addAll(clauses...)
@@ -526,6 +541,10 @@ func SelectOne(result interface{}, clauses ...*Clause) (Query, error) {
 
 	if !isModel(result) {
 		return &query, ErrInvalidModelArg
+	}
+
+	if !modelTypeHasID(result) {
+		return &query, ErrMissingIdField
 	}
 
 	query.str = fmt.Sprintf("select * from %s", modelTable(result))
@@ -543,6 +562,10 @@ func Insert(result interface{}) (Query, error) {
 		return &query, ErrInvalidModelArg
 	}
 
+	if !modelTypeHasID(result) {
+		return &query, ErrMissingIdField
+	}
+
 	query.result = result
 
 	return &query, nil
@@ -556,6 +579,10 @@ func Update(result interface{}) (Query, error) {
 		return &query, ErrInvalidModelArg
 	}
 
+	if !modelTypeHasID(result) {
+		return &query, ErrMissingIdField
+	}
+
 	query.result = result
 
 	return &query, nil
@@ -567,6 +594,10 @@ func Upsert(result interface{}) (Query, error) {
 
 	if !isModel(result) {
 		return &query, ErrInvalidModelArg
+	}
+
+	if !modelTypeHasID(result) {
+		return &query, ErrMissingIdField
 	}
 
 	query.result = result

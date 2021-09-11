@@ -20,6 +20,11 @@ type Model struct {
 	String string
 }
 
+type IdMissingModel struct {
+	Bool   bool
+	String string
+}
+
 type ManagedFieldsModel struct {
 	ID        uint
 	Bool      bool
@@ -118,6 +123,15 @@ func TestAllReturnsErrorIfArgumentInvalid(t *testing.T) {
 	assert.True(t, errors.Is(err, query.ErrInvalidModelsArg))
 }
 
+func TestAllReturnsErrorIfIdIsMissing(t *testing.T) {
+	db := initDB(t)
+	client := New(db)
+
+	var models []*IdMissingModel
+	err := client.All(&models)
+	assert.True(t, errors.Is(err, query.ErrMissingIdField))
+}
+
 func TestFind(t *testing.T) {
 	db := initDB(t)
 	client := New(db)
@@ -154,6 +168,15 @@ func TestFindReturnsErrorIfArgumentInvalid(t *testing.T) {
 	var intPtr *int
 	err = client.Find(&intPtr)
 	assert.True(t, errors.Is(err, query.ErrInvalidModelArg))
+}
+
+func TestFindReturnsErrorIfIdIsMissing(t *testing.T) {
+	db := initDB(t)
+	client := New(db)
+
+	var model IdMissingModel
+	err := client.Find(&model)
+	assert.True(t, errors.Is(err, query.ErrMissingIdField))
 }
 
 func TestFindReturnsErrorIfModelNotFound(t *testing.T) {
@@ -213,6 +236,15 @@ func TestFindAllReturnsErrorIfArgumentInvalid(t *testing.T) {
 	assert.True(t, errors.Is(err, query.ErrInvalidModelsArg))
 }
 
+func TestFindAllReturnsErrorIfIdIsMissing(t *testing.T) {
+	db := initDB(t)
+	client := New(db)
+
+	var models []*IdMissingModel
+	err := client.FindAll(&models)
+	assert.True(t, errors.Is(err, query.ErrMissingIdField))
+}
+
 func TestSaveReturnsErrorIfArgumentInvalid(t *testing.T) {
 	db := initDB(t)
 	client := New(db)
@@ -228,6 +260,15 @@ func TestSaveReturnsErrorIfArgumentInvalid(t *testing.T) {
 	var intPtr *int
 	err = client.Save(&intPtr)
 	assert.True(t, errors.Is(err, query.ErrInvalidModelArg))
+}
+
+func TestSaveReturnsErrorIfIdIsMissing(t *testing.T) {
+	db := initDB(t)
+	client := New(db)
+
+	var model IdMissingModel
+	err := client.Save(&model)
+	assert.True(t, errors.Is(err, query.ErrMissingIdField))
 }
 
 func TestSaveUpdatesExistingModel(t *testing.T) {
