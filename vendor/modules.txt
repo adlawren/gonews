@@ -116,7 +116,7 @@ github.com/nbutton23/zxcvbn-go/utils/math
 github.com/pelletier/go-toml
 # github.com/peterh/liner v0.0.0-20170317030525-88609521dc4b
 github.com/peterh/liner
-# github.com/pkg/errors v0.9.1
+# github.com/pkg/errors v0.8.1
 github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib

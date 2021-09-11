@@ -10,7 +10,6 @@ require (
 	github.com/lib/pq v1.9.0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mmcdole/gofeed v1.1.0
-	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose v2.6.0+incompatible
 	github.com/rs/zerolog v1.19.0
 	github.com/securego/gosec v0.0.0-20200401082031-e946c8c39989
