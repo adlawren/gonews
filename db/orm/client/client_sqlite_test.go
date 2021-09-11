@@ -20,7 +20,7 @@ type Model struct {
 	String string
 }
 
-type ModelWithManagedFields struct {
+type ManagedFieldsModel struct {
 	ID        uint
 	Bool      bool
 	String    string
@@ -63,8 +63,8 @@ func createModelsTable(t *testing.T, db *sql.DB) {
 	assert.NoError(t, err)
 }
 
-func createModelWithManagedFieldssTable(t *testing.T, db *sql.DB) {
-	_, err := db.Exec("CREATE TABLE IF NOT EXISTS \"model_with_managed_fieldss\" (\"id\" integer primary key autoincrement,\"bool\" bool,\"string\" varchar(255),\"created_at\" datetime, \"updated_at\" datetime);")
+func createManagedFieldsModelsTable(t *testing.T, db *sql.DB) {
+	_, err := db.Exec("CREATE TABLE IF NOT EXISTS \"managed_fields_models\" (\"id\" integer primary key autoincrement,\"bool\" bool,\"string\" varchar(255),\"created_at\" datetime, \"updated_at\" datetime);")
 	assert.NoError(t, err)
 }
 
@@ -258,11 +258,11 @@ func TestSaveUpdatesExistingModel(t *testing.T) {
 
 func TestSaveSetsCreatedAtIfPresent(t *testing.T) {
 	db := initDB(t)
-	createModelWithManagedFieldssTable(t, db)
+	createManagedFieldsModelsTable(t, db)
 
 	client := New(db)
 
-	model := ModelWithManagedFields{
+	model := ManagedFieldsModel{
 		Bool:   true,
 		String: "abc",
 	}
@@ -270,11 +270,45 @@ func TestSaveSetsCreatedAtIfPresent(t *testing.T) {
 	err := client.Save(&model)
 	assert.NoError(t, err)
 
-	var matchingModel ModelWithManagedFields
+	var matchingModel ManagedFieldsModel
 	err = client.Find(
 		&matchingModel,
 		query.NewClause("where string = ?", "abc"))
 
 	var zeroTime time.Time
 	assert.NotEqual(t, matchingModel.CreatedAt, zeroTime)
+}
+
+func TestSaveUpdatesUpdatedAtIfPresent(t *testing.T) {
+	db := initDB(t)
+	createManagedFieldsModelsTable(t, db)
+
+	client := New(db)
+
+	model := ManagedFieldsModel{
+		Bool:   true,
+		String: "abc",
+	}
+
+	err := client.Save(&model)
+	assert.NoError(t, err)
+
+	var matchingModel ManagedFieldsModel
+	err = client.Find(
+		&matchingModel,
+		query.NewClause("where string = ?", "abc"))
+
+	var zeroTime time.Time
+	assert.NotEqual(t, matchingModel.UpdatedAt, zeroTime)
+
+	previousUpdatedAt := matchingModel.UpdatedAt
+
+	err = client.Save(&model)
+	assert.NoError(t, err)
+
+	err = client.Find(
+		&matchingModel,
+		query.NewClause("where string = ?", "abc"))
+
+	assert.True(t, matchingModel.UpdatedAt.After(previousUpdatedAt))
 }
