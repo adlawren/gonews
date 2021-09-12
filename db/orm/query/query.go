@@ -138,9 +138,8 @@ type Query interface {
 }
 
 type query struct {
-	str    string
-	args   []interface{}
-	result interface{}
+	str  string
+	args []interface{}
 }
 
 func (q *query) add(clause *Clause) {
@@ -176,6 +175,7 @@ func exec(q Query, db *sql.DB) error {
 
 type selectCountQuery struct {
 	query
+	result *int
 }
 
 func (q *selectCountQuery) Exec(db *sql.DB) error {
@@ -214,6 +214,7 @@ func (q *selectCountQuery) ExecTx(tx *sql.Tx) error {
 
 type selectQuery struct {
 	query
+	results interface{}
 }
 
 func (q *selectQuery) Exec(db *sql.DB) error {
@@ -233,7 +234,7 @@ func (q *selectQuery) ExecTx(tx *sql.Tx) error {
 		return fmt.Errorf("failed to execute query: %w", err)
 	}
 
-	val := reflect.Indirect(reflect.ValueOf(q.result))
+	val := reflect.Indirect(reflect.ValueOf(q.results))
 	slicValue := reflect.Indirect(reflect.New(reflect.SliceOf(val.Type().Elem())))
 	for rows.Next() {
 		modelValue := reflect.Indirect(reflect.New(val.Type().Elem().Elem()))
@@ -262,6 +263,7 @@ func (q *selectQuery) ExecTx(tx *sql.Tx) error {
 
 type selectOneQuery struct {
 	query
+	result interface{}
 }
 
 func (q *selectOneQuery) Exec(db *sql.DB) error {
@@ -307,6 +309,7 @@ func (q *selectOneQuery) ExecTx(tx *sql.Tx) error {
 
 type insertQuery struct {
 	query
+	model interface{}
 }
 
 func (q *insertQuery) Exec(db *sql.DB) error {
@@ -314,28 +317,28 @@ func (q *insertQuery) Exec(db *sql.DB) error {
 }
 
 func (q *insertQuery) ExecTx(tx *sql.Tx) error {
-	resultVal := reflect.Indirect(reflect.ValueOf(q.result))
+	modelVal := reflect.Indirect(reflect.ValueOf(q.model))
 
 	snakeFieldNames := []string{}
 	fieldValues := []interface{}{}
-	for idx := 0; idx < resultVal.NumField(); idx++ {
+	for idx := 0; idx < modelVal.NumField(); idx++ {
 		// Caller shouldn't be modifying ID
-		if resultVal.Type().Field(idx).Name == "ID" {
+		if modelVal.Type().Field(idx).Name == "ID" {
 			continue
 		}
 
 		// CreatedAt will be set below if present
-		if resultVal.Type().Field(idx).Name == "CreatedAt" {
+		if modelVal.Type().Field(idx).Name == "CreatedAt" {
 			continue
 		}
 
 		// UpdatedAt will be set below if present
-		if resultVal.Type().Field(idx).Name == "UpdatedAt" {
+		if modelVal.Type().Field(idx).Name == "UpdatedAt" {
 			continue
 		}
 
-		snakeFieldNames = append(snakeFieldNames, toSnake(resultVal.Type().Field(idx).Name))
-		fieldValues = append(fieldValues, resultVal.Field(idx).Interface())
+		snakeFieldNames = append(snakeFieldNames, toSnake(modelVal.Type().Field(idx).Name))
+		fieldValues = append(fieldValues, modelVal.Field(idx).Interface())
 	}
 
 	// For CreatedAt/UpdatedAt
@@ -343,20 +346,20 @@ func (q *insertQuery) ExecTx(tx *sql.Tx) error {
 
 	// If a model has a CreatedAt field, set it to the current time
 	var zeroValue reflect.Value
-	if resultVal.FieldByName("CreatedAt") != zeroValue {
+	if modelVal.FieldByName("CreatedAt") != zeroValue {
 		snakeFieldNames = append(snakeFieldNames, "created_at")
 		fieldValues = append(fieldValues, reflect.ValueOf(now).Interface())
-		resultVal.FieldByName("CreatedAt").Set(reflect.ValueOf(now))
+		modelVal.FieldByName("CreatedAt").Set(reflect.ValueOf(now))
 	}
 
 	// If a model has an UpdatedAt field, set it to the current time
-	if resultVal.FieldByName("UpdatedAt") != zeroValue {
+	if modelVal.FieldByName("UpdatedAt") != zeroValue {
 		snakeFieldNames = append(snakeFieldNames, "updated_at")
 		fieldValues = append(fieldValues, reflect.ValueOf(now).Interface())
-		resultVal.FieldByName("UpdatedAt").Set(reflect.ValueOf(now))
+		modelVal.FieldByName("UpdatedAt").Set(reflect.ValueOf(now))
 	}
 
-	modelName := resultVal.Type().Name()
+	modelName := modelVal.Type().Name()
 	tableName := fmt.Sprintf("%ss", toSnake(modelName))
 	paramStrings := []string{}
 	for idx := 0; idx < len(snakeFieldNames); idx++ {
@@ -388,13 +391,14 @@ func (q *insertQuery) ExecTx(tx *sql.Tx) error {
 		return fmt.Errorf("failed to get last inserted id: %w", err)
 	}
 
-	resultVal.FieldByName("ID").Set(reflect.ValueOf(uint(id)))
+	modelVal.FieldByName("ID").Set(reflect.ValueOf(uint(id)))
 
 	return nil
 }
 
 type updateQuery struct {
 	query
+	model interface{}
 }
 
 func (q *updateQuery) Exec(db *sql.DB) error {
@@ -402,43 +406,43 @@ func (q *updateQuery) Exec(db *sql.DB) error {
 }
 
 func (q *updateQuery) ExecTx(tx *sql.Tx) error {
-	resultVal := reflect.Indirect(reflect.ValueOf(q.result))
+	modelVal := reflect.Indirect(reflect.ValueOf(q.model))
 
 	fieldNames := []string{}
 	fieldValues := []interface{}{}
-	for idx := 0; idx < resultVal.NumField(); idx++ {
+	for idx := 0; idx < modelVal.NumField(); idx++ {
 		// Caller shouldn't be modifying ID
-		if resultVal.Type().Field(idx).Name == "ID" {
+		if modelVal.Type().Field(idx).Name == "ID" {
 			continue
 		}
 
 		// CreatedAt is set in a create query; shouldn't be modified by caller
-		if resultVal.Type().Field(idx).Name == "CreatedAt" {
+		if modelVal.Type().Field(idx).Name == "CreatedAt" {
 			continue
 		}
 
 		// UpdatedAt will be set below if present
-		if resultVal.Type().Field(idx).Name == "UpdatedAt" {
+		if modelVal.Type().Field(idx).Name == "UpdatedAt" {
 			continue
 		}
 
-		fieldNames = append(fieldNames, resultVal.Type().Field(idx).Name)
-		fieldValues = append(fieldValues, resultVal.Field(idx).Interface())
+		fieldNames = append(fieldNames, modelVal.Type().Field(idx).Name)
+		fieldValues = append(fieldValues, modelVal.Field(idx).Interface())
 	}
 
 	// If a model has an UpdatedAt field, set it to the current time
 	var zeroValue reflect.Value
-	if resultVal.FieldByName("UpdatedAt") != zeroValue {
+	if modelVal.FieldByName("UpdatedAt") != zeroValue {
 		fieldNames = append(fieldNames, "UpdatedAt")
 
 		now := time.Now()
 		fieldValues = append(fieldValues, reflect.ValueOf(now).Interface())
-		resultVal.FieldByName("UpdatedAt").Set(reflect.ValueOf(now))
+		modelVal.FieldByName("UpdatedAt").Set(reflect.ValueOf(now))
 	}
 
-	fieldValues = append(fieldValues, resultVal.FieldByName("ID").Interface())
+	fieldValues = append(fieldValues, modelVal.FieldByName("ID").Interface())
 
-	modelName := resultVal.Type().Name()
+	modelName := modelVal.Type().Name()
 	tableName := fmt.Sprintf("%ss", toSnake(modelName))
 	paramStrings := []string{}
 	for _, fieldName := range fieldNames {
@@ -470,6 +474,7 @@ func (q *updateQuery) ExecTx(tx *sql.Tx) error {
 
 type upsertQuery struct {
 	query
+	model interface{}
 }
 
 func (q *upsertQuery) Exec(db *sql.DB) error {
@@ -478,8 +483,8 @@ func (q *upsertQuery) Exec(db *sql.DB) error {
 
 func (q *upsertQuery) ExecTx(tx *sql.Tx) error {
 	var count int
-	resultVal := reflect.Indirect(reflect.ValueOf(q.result))
-	selectCountFromQuery := SelectCountFrom(modelTable(q.result), &count, NewClause("where id = ?", resultVal.FieldByName("ID").Interface()))
+	modelVal := reflect.Indirect(reflect.ValueOf(q.model))
+	selectCountFromQuery := SelectCountFrom(modelTable(q.model), &count, NewClause("where id = ?", modelVal.FieldByName("ID").Interface()))
 
 	err := selectCountFromQuery.ExecTx(tx)
 	if err != nil {
@@ -488,9 +493,9 @@ func (q *upsertQuery) ExecTx(tx *sql.Tx) error {
 
 	var query Query
 	if count > 0 {
-		query, err = Update(q.result)
+		query, err = Update(q.model)
 	} else {
-		query, err = Insert(q.result)
+		query, err = Insert(q.model)
 	}
 
 	if err != nil {
@@ -529,7 +534,7 @@ func Select(results interface{}, clauses ...*Clause) (Query, error) {
 	}
 
 	query.str = fmt.Sprintf("select * from %s", modelsTable(results))
-	query.result = results
+	query.results = results
 	query.addAll(clauses...)
 
 	return &query, nil
@@ -566,7 +571,7 @@ func Insert(model interface{}) (Query, error) {
 		return &query, ErrMissingIdField
 	}
 
-	query.result = model
+	query.model = model
 
 	return &query, nil
 }
@@ -583,7 +588,7 @@ func Update(model interface{}) (Query, error) {
 		return &query, ErrMissingIdField
 	}
 
-	query.result = model
+	query.model = model
 
 	return &query, nil
 }
@@ -600,7 +605,7 @@ func Upsert(model interface{}) (Query, error) {
 		return &query, ErrMissingIdField
 	}
 
-	query.result = model
+	query.model = model
 
 	return &query, nil
 }
