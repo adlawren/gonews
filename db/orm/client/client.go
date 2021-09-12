@@ -25,15 +25,15 @@ type client struct {
 }
 
 // All fetches the models from the appropriate table and assigns the result to the given interface
-func (c *client) All(ptr interface{}) error {
+func (c *client) All(results interface{}) error {
 	// All just calls FindAll without using any clauses
-	// It exists b/c "All(ptr)" is faster to type than "FindAll(ptr)"
-	return c.FindAll(ptr)
+	// It exists b/c "All(...)" is faster to type than "FindAll(...)"
+	return c.FindAll(results)
 }
 
 // Find fetches the first model from the appropriate table and assigns the result to the given interface, subject to the given query clauses
-func (c *client) Find(ptr interface{}, clauses ...*query.Clause) error {
-	query, err := query.SelectOne(ptr, clauses...)
+func (c *client) Find(result interface{}, clauses ...*query.Clause) error {
+	query, err := query.SelectOne(result, clauses...)
 	if err != nil {
 		return fmt.Errorf("failed to create query: %w", err)
 	}
@@ -47,8 +47,8 @@ func (c *client) Find(ptr interface{}, clauses ...*query.Clause) error {
 }
 
 // FindAll fetches the models from the appropriate table and assigns the result to the given interface, subject to the given query clauses
-func (c *client) FindAll(ptr interface{}, clauses ...*query.Clause) error {
-	query, err := query.Select(ptr, clauses...)
+func (c *client) FindAll(results interface{}, clauses ...*query.Clause) error {
+	query, err := query.Select(results, clauses...)
 	if err != nil {
 		return fmt.Errorf("failed to create query: %w", err)
 	}
@@ -62,8 +62,8 @@ func (c *client) FindAll(ptr interface{}, clauses ...*query.Clause) error {
 }
 
 // Save inserts the model into the appropriate table if it has an unspecified ID, and updates it otherwise
-func (c *client) Save(ptr interface{}) error {
-	query, err := query.Upsert(ptr)
+func (c *client) Save(model interface{}) error {
+	query, err := query.Upsert(model)
 	if err != nil {
 		return fmt.Errorf("failed to create query: %w", err)
 	}
