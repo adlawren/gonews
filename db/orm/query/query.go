@@ -517,19 +517,19 @@ func SelectCountFrom(table string, result *int, clauses ...*Clause) Query {
 }
 
 // Select returns a select query which fetches the models from the appropriate table and assigns the result to the given interface, subject to the given query clauses
-func Select(result interface{}, clauses ...*Clause) (Query, error) {
+func Select(results interface{}, clauses ...*Clause) (Query, error) {
 	var query selectQuery
 
-	if !isModels(result) {
+	if !isModels(results) {
 		return &query, ErrInvalidModelsArg
 	}
 
-	if !modelsTypeHasID(result) {
+	if !modelsTypeHasID(results) {
 		return &query, ErrMissingIdField
 	}
 
-	query.str = fmt.Sprintf("select * from %s", modelsTable(result))
-	query.result = result
+	query.str = fmt.Sprintf("select * from %s", modelsTable(results))
+	query.result = results
 	query.addAll(clauses...)
 
 	return &query, nil
@@ -555,52 +555,52 @@ func SelectOne(result interface{}, clauses ...*Clause) (Query, error) {
 }
 
 // Insert returns an insert query which inserts the model into the appropriate table
-func Insert(result interface{}) (Query, error) {
+func Insert(model interface{}) (Query, error) {
 	var query insertQuery
 
-	if !isModel(result) {
+	if !isModel(model) {
 		return &query, ErrInvalidModelArg
 	}
 
-	if !modelTypeHasID(result) {
+	if !modelTypeHasID(model) {
 		return &query, ErrMissingIdField
 	}
 
-	query.result = result
+	query.result = model
 
 	return &query, nil
 }
 
 // Update returns an update query which updates the model in the appropriate table
-func Update(result interface{}) (Query, error) {
+func Update(model interface{}) (Query, error) {
 	var query updateQuery
 
-	if !isModel(result) {
+	if !isModel(model) {
 		return &query, ErrInvalidModelArg
 	}
 
-	if !modelTypeHasID(result) {
+	if !modelTypeHasID(model) {
 		return &query, ErrMissingIdField
 	}
 
-	query.result = result
+	query.result = model
 
 	return &query, nil
 }
 
 // Upsert returns an upsert query which inserts the model into the appropriate table if it has an unspecified ID, and updates it otherwise
-func Upsert(result interface{}) (Query, error) {
+func Upsert(model interface{}) (Query, error) {
 	var query upsertQuery
 
-	if !isModel(result) {
+	if !isModel(model) {
 		return &query, ErrInvalidModelArg
 	}
 
-	if !modelTypeHasID(result) {
+	if !modelTypeHasID(model) {
 		return &query, ErrMissingIdField
 	}
 
-	query.result = result
+	query.result = model
 
 	return &query, nil
 }
