@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"gonews/db/orm/query"
+	"gonews/db/orm/query/clause"
 	"os"
 	"path/filepath"
 	"testing"
@@ -208,7 +209,7 @@ func TestFind(t *testing.T) {
 	var matchingModel Model
 	err = client.Find(
 		&matchingModel,
-		query.NewClause("where string = ?", "abc"))
+		clause.New("where string = ?", "abc"))
 	assert.NoError(t, err)
 
 	assertModelsEqual(t, &model, &matchingModel)
@@ -247,7 +248,7 @@ func TestFindReturnsErrorIfModelNotFound(t *testing.T) {
 	var matchingModel Model
 	err := client.Find(
 		&matchingModel,
-		query.NewClause("where string = ?", "abc"))
+		clause.New("where string = ?", "abc"))
 	assert.True(t, errors.Is(err, query.ErrModelNotFound))
 }
 
@@ -273,7 +274,7 @@ func TestFindAll(t *testing.T) {
 	var matchingModels []*Model
 	err = client.FindAll(
 		&matchingModels,
-		query.NewClause("where string = ?", "abc"))
+		clause.New("where string = ?", "abc"))
 	assert.NoError(t, err)
 
 	assert.Len(t, matchingModels, 1)
@@ -352,7 +353,7 @@ func TestSaveUpdatesExistingModel(t *testing.T) {
 	var matchingModel Model
 	err = client.Find(
 		&matchingModel,
-		query.NewClause("where string = ?", "def"))
+		clause.New("where string = ?", "def"))
 	assert.NoError(t, err)
 
 	assertModelsEqual(t, &model, &matchingModel)

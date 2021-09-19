@@ -4,13 +4,14 @@ import (
 	"database/sql"
 	"fmt"
 	"gonews/db/orm/query"
+	"gonews/db/orm/query/clause"
 )
 
 type Client interface {
 	All(interface{}) error
 	DeleteAll(interface{}) error
-	Find(interface{}, ...*query.Clause) error
-	FindAll(interface{}, ...*query.Clause) error
+	Find(interface{}, ...*clause.Clause) error
+	FindAll(interface{}, ...*clause.Clause) error
 	Save(interface{}) error
 }
 
@@ -47,7 +48,7 @@ func (c *client) DeleteAll(models interface{}) error {
 }
 
 // Find fetches the first model from the appropriate table and assigns the result to the given interface, subject to the given query clauses
-func (c *client) Find(result interface{}, clauses ...*query.Clause) error {
+func (c *client) Find(result interface{}, clauses ...*clause.Clause) error {
 	query, err := query.SelectOne(result, clauses...)
 	if err != nil {
 		return fmt.Errorf("failed to create query: %w", err)
@@ -62,7 +63,7 @@ func (c *client) Find(result interface{}, clauses ...*query.Clause) error {
 }
 
 // FindAll fetches the models from the appropriate table and assigns the result to the given interface, subject to the given query clauses
-func (c *client) FindAll(results interface{}, clauses ...*query.Clause) error {
+func (c *client) FindAll(results interface{}, clauses ...*clause.Clause) error {
 	query, err := query.Select(results, clauses...)
 	if err != nil {
 		return fmt.Errorf("failed to create query: %w", err)

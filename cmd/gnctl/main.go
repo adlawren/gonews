@@ -8,7 +8,7 @@ import (
 	"gonews/auth"
 	"gonews/config"
 	"gonews/db"
-	"gonews/db/orm/query"
+	"gonews/db/orm/query/clause"
 	"gonews/feed"
 	"gonews/parser"
 	"gonews/timestamp"
@@ -230,7 +230,7 @@ func main() {
 
 	if len(*tagName) > 0 {
 		var items []*feed.Item
-		err := adb.FindAll(&items, query.NewClause("where feed_id in (select feed_id from tags where name = ?)", *tagName))
+		err := adb.FindAll(&items, clause.New("where feed_id in (select feed_id from tags where name = ?)", *tagName))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get items")
 			return
@@ -245,7 +245,7 @@ func main() {
 
 	if *feedID != 0 {
 		var items []*feed.Item
-		err := adb.FindAll(&items, query.NewClause("where feed_id = ?", *feedID))
+		err := adb.FindAll(&items, clause.New("where feed_id = ?", *feedID))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get items")
 			return
@@ -260,7 +260,7 @@ func main() {
 
 	if *itemID != 0 {
 		var item feed.Item
-		err := adb.Find(&item, query.NewClause("where id = ?", *itemID))
+		err := adb.Find(&item, clause.New("where id = ?", *itemID))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get item")
 			return
@@ -306,7 +306,7 @@ func main() {
 			return
 		}
 
-		err = adb.Find(&match, query.NewClause("where name = ?", timestamp.Name))
+		err = adb.Find(&match, clause.New("where name = ?", timestamp.Name))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get matching timestamp")
 			return
@@ -327,7 +327,7 @@ func main() {
 			return
 		}
 
-		err = adb.Find(&match, query.NewClause("where username = ?", user.Username))
+		err = adb.Find(&match, clause.New("where username = ?", user.Username))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get matching user")
 			return
@@ -348,7 +348,7 @@ func main() {
 			return
 		}
 
-		err = adb.Find(&match, query.NewClause("where url = ?", feed.URL))
+		err = adb.Find(&match, clause.New("where url = ?", feed.URL))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get matching feed")
 			return
@@ -369,7 +369,7 @@ func main() {
 			return
 		}
 
-		err = adb.Find(&match, query.NewClause("where name = ?", tag.Name))
+		err = adb.Find(&match, clause.New("where name = ?", tag.Name))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get matching tag")
 			return
@@ -390,7 +390,7 @@ func main() {
 			return
 		}
 
-		err = adb.Find(&match, query.NewClause("where link = ?", item.Link))
+		err = adb.Find(&match, clause.New("where link = ?", item.Link))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get matching item")
 			return

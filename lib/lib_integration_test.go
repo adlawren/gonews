@@ -3,7 +3,7 @@ package lib
 import (
 	"context"
 	"gonews/config"
-	"gonews/db/orm/query"
+	"gonews/db/orm/query/clause"
 	"gonews/feed"
 	"gonews/rss"
 	"gonews/test"
@@ -138,11 +138,11 @@ func TestWatchFeeds(t *testing.T) {
 	}
 
 	var f feed.Feed
-	err = db.Find(&f, query.NewClause("where url = ?", expectedFeeds[0].URL))
+	err = db.Find(&f, clause.New("where url = ?", expectedFeeds[0].URL))
 	assert.NoError(t, err)
 
 	var items []*feed.Item
-	err = db.FindAll(&items, query.NewClause("where feed_id = ?", f.ID))
+	err = db.FindAll(&items, clause.New("where feed_id = ?", f.ID))
 	expectedItems := expectedItems()
 	assert.Equal(t, len(items), len(expectedItems))
 	for i := 0; i < len(items); i++ {
@@ -187,11 +187,11 @@ func TestAutoDismissItems(t *testing.T) {
 	time.Sleep(d)
 
 	var f feed.Feed
-	err = db.Find(&f, query.NewClause("where url = ?", testCfg.Feeds[0].URL))
+	err = db.Find(&f, clause.New("where url = ?", testCfg.Feeds[0].URL))
 	assert.NoError(t, err)
 
 	var items []*feed.Item
-	err = db.FindAll(&items, query.NewClause("where feed_id = ?", f.ID))
+	err = db.FindAll(&items, clause.New("where feed_id = ?", f.ID))
 	assert.NoError(t, err)
 	for _, item := range items {
 		assert.True(t, item.Hide)
@@ -240,11 +240,11 @@ func TestAutoDismissItemsIgnoresItemsYoungerThanAutoDismissAfter(t *testing.T) {
 	time.Sleep(d)
 
 	var f feed.Feed
-	err = db.Find(&f, query.NewClause("where url = ?", testCfg.Feeds[0].URL))
+	err = db.Find(&f, clause.New("where url = ?", testCfg.Feeds[0].URL))
 	assert.NoError(t, err)
 
 	var items []*feed.Item
-	err = db.FindAll(&items, query.NewClause("where feed_id = ?", f.ID))
+	err = db.FindAll(&items, clause.New("where feed_id = ?", f.ID))
 	assert.NoError(t, err)
 	for _, item := range items {
 		assert.False(t, item.Hide)

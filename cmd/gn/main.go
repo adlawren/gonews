@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"gonews/config"
 	"gonews/db"
-	"gonews/db/orm/query"
+	"gonews/db/orm/query/clause"
 	"gonews/feed"
 	"gonews/lib"
 	"gonews/middleware"
@@ -78,7 +78,7 @@ func itemsHandlerFunc(w http.ResponseWriter, r *http.Request) {
 		var items []*feed.Item
 		err = db.All(&items)
 	} else {
-		err = db.FindAll(&items, query.NewClause("where feed_id in (select feed_id from tags where name = ?)", tagName))
+		err = db.FindAll(&items, clause.New("where feed_id in (select feed_id from tags where name = ?)", tagName))
 	}
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get items")
@@ -120,7 +120,7 @@ func hideHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var item feed.Item
-	err = db.Find(&item, query.NewClause("where id = ?", uint(id)))
+	err = db.Find(&item, clause.New("where id = ?", uint(id)))
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get item from ID")
 		return

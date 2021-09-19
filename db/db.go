@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"gonews/config"
 	"gonews/db/orm/client"
-	"gonews/db/orm/query"
+	"gonews/db/orm/query/clause"
 	"os"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -18,8 +18,8 @@ type DB interface {
 	Ping() error
 	Migrate(string) error
 	All(interface{}) error
-	Find(interface{}, ...*query.Clause) error
-	FindAll(interface{}, ...*query.Clause) error
+	Find(interface{}, ...*clause.Clause) error
+	FindAll(interface{}, ...*clause.Clause) error
 	Save(interface{}) error
 	Close() error
 }
@@ -74,11 +74,11 @@ func (sdb *sqlDB) All(ptr interface{}) error {
 	return sdb.client().All(ptr)
 }
 
-func (sdb *sqlDB) Find(ptr interface{}, clauses ...*query.Clause) error {
+func (sdb *sqlDB) Find(ptr interface{}, clauses ...*clause.Clause) error {
 	return sdb.client().Find(ptr, clauses...)
 }
 
-func (sdb *sqlDB) FindAll(ptr interface{}, clauses ...*query.Clause) error {
+func (sdb *sqlDB) FindAll(ptr interface{}, clauses ...*clause.Clause) error {
 	return sdb.client().FindAll(ptr, clauses...)
 }
 

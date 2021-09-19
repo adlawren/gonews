@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gonews/auth"
 	"gonews/db/orm/query"
+	"gonews/db/orm/query/clause"
 	"gonews/mock_db"
 	"gonews/test"
 	"gonews/user"
@@ -24,7 +25,7 @@ func TestIsValidReturnsErrorWhenDatabaseReturnsError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().Find(gomock.Any(), gomock.Any()).DoAndReturn(func(ptr interface{}, clauses ...*query.Clause) error {
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).DoAndReturn(func(ptr interface{}, clauses ...*clause.Clause) error {
 		_, ok := ptr.(*user.User)
 		assert.True(t, ok)
 
@@ -43,7 +44,7 @@ func TestIsValidReturnsFalseWhenUserDoesNotExist(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().Find(gomock.Any(), gomock.Any()).DoAndReturn(func(ptr interface{}, clauses ...*query.Clause) error {
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).DoAndReturn(func(ptr interface{}, clauses ...*clause.Clause) error {
 		_, ok := ptr.(*user.User)
 		assert.True(t, ok)
 
@@ -67,7 +68,7 @@ func TestIsValidReturnsFalseWhenHashDoesNotMatch(t *testing.T) {
 	}
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().Find(gomock.Any(), gomock.Any()).DoAndReturn(func(ptr interface{}, clauses ...*query.Clause) error {
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).DoAndReturn(func(ptr interface{}, clauses ...*clause.Clause) error {
 		user, ok := ptr.(*user.User)
 		assert.True(t, ok)
 
@@ -96,7 +97,7 @@ func TestIsValidReturnsTrueWhenHashMatches(t *testing.T) {
 	}
 
 	db := mock_db.NewMockDB(ctrl)
-	db.EXPECT().Find(gomock.Any(), gomock.Any()).DoAndReturn(func(ptr interface{}, clauses ...*query.Clause) error {
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).DoAndReturn(func(ptr interface{}, clauses ...*clause.Clause) error {
 		user, ok := ptr.(*user.User)
 		assert.True(t, ok)
 

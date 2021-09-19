@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gonews/db"
 	"gonews/db/orm/query"
+	"gonews/db/orm/query/clause"
 	"gonews/user"
 
 	"golang.org/x/crypto/bcrypt"
@@ -12,7 +13,7 @@ import (
 
 func IsValid(username, password string, db db.DB) (bool, error) {
 	var user user.User
-	err := db.Find(&user, query.NewClause("where username = ?", username))
+	err := db.Find(&user, clause.New("where username = ?", username))
 	if errors.Is(err, query.ErrModelNotFound) {
 		return false, nil
 	} else if err != nil {

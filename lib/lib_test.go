@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gonews/config"
 	"gonews/db/orm/query"
+	"gonews/db/orm/query/clause"
 	"gonews/feed"
 	"gonews/mock_db"
 	"gonews/mock_parser"
@@ -239,7 +240,7 @@ func TestFetchFeedsSkipsMatchingItems(t *testing.T) {
 
 		return nil
 	})
-	db.EXPECT().Find(gomock.Any(), gomock.Any()).DoAndReturn(func(ptr interface{}, clauses ...*query.Clause) error {
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).DoAndReturn(func(ptr interface{}, clauses ...*clause.Clause) error {
 		item, ok := ptr.(*feed.Item)
 		assert.True(t, ok)
 
@@ -247,7 +248,7 @@ func TestFetchFeedsSkipsMatchingItems(t *testing.T) {
 
 		return nil
 	})
-	db.EXPECT().Find(gomock.Any(), gomock.Any()).DoAndReturn(func(ptr interface{}, clauses ...*query.Clause) error {
+	db.EXPECT().Find(gomock.Any(), gomock.Any()).DoAndReturn(func(ptr interface{}, clauses ...*clause.Clause) error {
 		item, ok := ptr.(*feed.Item)
 		assert.True(t, ok)
 

@@ -3,6 +3,7 @@ package query
 import (
 	"database/sql"
 	"fmt"
+	"gonews/db/orm/query/clause"
 	"reflect"
 	"strings"
 	"time"
@@ -117,20 +118,6 @@ func modelsTable(models interface{}) string {
 	return fmt.Sprintf("%ss", toSnake(modelName))
 }
 
-// Clause represents an SQL clause in a SQL query
-type Clause struct {
-	str  string
-	args []interface{}
-}
-
-// NewClause creates a Clause from the given arguments
-func NewClause(clause string, args ...interface{}) *Clause {
-	return &Clause{
-		str:  clause,
-		args: args,
-	}
-}
-
 // Query contains the methods needed to execute a SQL query in a given database/transaction
 type Query interface {
 	Exec(*sql.DB) error
@@ -142,12 +129,12 @@ type query struct {
 	args []interface{}
 }
 
-func (q *query) add(clause *Clause) {
-	q.str = fmt.Sprintf("%s %s", q.str, clause.str)
-	q.args = append(q.args, clause.args...)
+func (q *query) add(clause *clause.Clause) {
+	q.str = fmt.Sprintf("%s %s", q.str, clause.Text())
+	q.args = append(q.args, clause.Args()...)
 }
 
-func (q *query) addAll(clauses ...*Clause) {
+func (q *query) addAll(clauses ...*clause.Clause) {
 	for _, clause := range clauses {
 		q.add(clause)
 	}
@@ -194,9 +181,9 @@ func (q *deleteQuery) ExecTx(tx *sql.Tx) error {
 		paramStrings = append(paramStrings, "?")
 	}
 
-	inClause := NewClause(fmt.Sprintf("in (%s)", strings.Join(paramStrings, ",")), ids...)
+	inClause := clause.New(fmt.Sprintf("in (%s)", strings.Join(paramStrings, ",")), ids...)
 
-	q.addAll(NewClause("where id"), inClause)
+	q.addAll(clause.New("where id"), inClause)
 
 	stmt, err := tx.Prepare(q.str)
 	defer stmt.Close()
@@ -531,7 +518,7 @@ func (q *upsertQuery) Exec(db *sql.DB) error {
 func (q *upsertQuery) ExecTx(tx *sql.Tx) error {
 	var count int
 	modelVal := reflect.Indirect(reflect.ValueOf(q.model))
-	selectCountFromQuery := SelectCountFrom(modelTable(q.model), &count, NewClause("where id = ?", modelVal.FieldByName("ID").Interface()))
+	selectCountFromQuery := SelectCountFrom(modelTable(q.model), &count, clause.New("where id = ?", modelVal.FieldByName("ID").Interface()))
 
 	err := selectCountFromQuery.ExecTx(tx)
 	if err != nil {
@@ -576,7 +563,7 @@ func Delete(models interface{}) (Query, error) {
 }
 
 // SelectCountFrom returns a select query which fetches the number of records in the given table and assigns the result to the given reference, subject to the given query clauses
-func SelectCountFrom(table string, result *int, clauses ...*Clause) Query {
+func SelectCountFrom(table string, result *int, clauses ...*clause.Clause) Query {
 	var query selectCountQuery
 
 	query.str = fmt.Sprintf("select count(*) from %s", table)
@@ -587,7 +574,7 @@ func SelectCountFrom(table string, result *int, clauses ...*Clause) Query {
 }
 
 // Select returns a select query which fetches the models from the appropriate table and assigns the result to the given interface, subject to the given query clauses
-func Select(results interface{}, clauses ...*Clause) (Query, error) {
+func Select(results interface{}, clauses ...*clause.Clause) (Query, error) {
 	var query selectQuery
 
 	if !isModels(results) {
@@ -606,7 +593,7 @@ func Select(results interface{}, clauses ...*Clause) (Query, error) {
 }
 
 // SelectOne returns a select query which fetches the first model from the appropriate table and assigns the result to the given interface, subject to the given query clauses
-func SelectOne(result interface{}, clauses ...*Clause) (Query, error) {
+func SelectOne(result interface{}, clauses ...*clause.Clause) (Query, error) {
 	var query selectOneQuery
 
 	if !isModel(result) {
