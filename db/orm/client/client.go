@@ -8,10 +8,10 @@ import (
 
 type Client interface {
 	All(interface{}) error
+	DeleteAll(interface{}) error
 	Find(interface{}, ...*query.Clause) error
 	FindAll(interface{}, ...*query.Clause) error
 	Save(interface{}) error
-	// Delete(interface{}) error // TODO
 }
 
 func New(db *sql.DB) Client {
@@ -29,6 +29,21 @@ func (c *client) All(results interface{}) error {
 	// All just calls FindAll without using any clauses
 	// It exists b/c "All(...)" is faster to type than "FindAll(...)"
 	return c.FindAll(results)
+}
+
+// DeleteAll deletes the given models from the appropriate table
+func (c *client) DeleteAll(models interface{}) error {
+	query, err := query.Delete(models)
+	if err != nil {
+		return fmt.Errorf("failed to create query: %w", err)
+	}
+
+	err = query.Exec(c.db)
+	if err != nil {
+		return fmt.Errorf("failed to execute query: %w", err)
+	}
+
+	return nil
 }
 
 // Find fetches the first model from the appropriate table and assigns the result to the given interface, subject to the given query clauses

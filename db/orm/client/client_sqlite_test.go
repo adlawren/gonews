@@ -132,6 +132,67 @@ func TestAllReturnsErrorIfIdIsMissing(t *testing.T) {
 	assert.True(t, errors.Is(err, query.ErrMissingIdField))
 }
 
+func TestDeleteAll(t *testing.T) {
+	db := initDB(t)
+	client := New(db)
+
+	model1 := Model{
+		Bool:   true,
+		String: "abc",
+	}
+	model2 := Model{
+		Bool:   true,
+		String: "def",
+	}
+	model3 := Model{
+		Bool:   true,
+		String: "ghi",
+	}
+
+	err := client.Save(&model1)
+	assert.NoError(t, err)
+
+	err = client.Save(&model2)
+	assert.NoError(t, err)
+
+	err = client.Save(&model3)
+	assert.NoError(t, err)
+
+	err = client.DeleteAll(&[]*Model{&model1, &model2})
+	assert.NoError(t, err)
+
+	var models []*Model
+	err = client.All(&models)
+	assert.Len(t, models, 1)
+	assertModelsEqual(t, &model3, models[0])
+}
+
+func TestDeleteAllReturnsErrorIfArgumentInvalid(t *testing.T) {
+	db := initDB(t)
+	client := New(db)
+
+	var model Model
+	err := client.DeleteAll(&model)
+	assert.True(t, errors.Is(err, query.ErrInvalidModelsArg))
+
+	var intSlice []int
+	err = client.DeleteAll(&intSlice)
+	assert.True(t, errors.Is(err, query.ErrInvalidModelsArg))
+
+	var intPtrSlice []*int
+	err = client.DeleteAll(&intPtrSlice)
+	assert.True(t, errors.Is(err, query.ErrInvalidModelsArg))
+}
+
+func TestDeleteAllReturnsErrorIfIdIsMissing(t *testing.T) {
+	db := initDB(t)
+	client := New(db)
+
+	var models []*IdMissingModel
+	err := client.DeleteAll(&models)
+	assert.True(t, errors.Is(err, query.ErrMissingIdField))
+}
+
 func TestFind(t *testing.T) {
 	db := initDB(t)
 	client := New(db)

@@ -173,6 +173,53 @@ func exec(q Query, db *sql.DB) error {
 	return nil
 }
 
+type deleteQuery struct {
+	query
+	models interface{}
+}
+
+func (q *deleteQuery) Exec(db *sql.DB) error {
+	return exec(q, db)
+}
+
+func (q *deleteQuery) ExecTx(tx *sql.Tx) error {
+	modelsVal := reflect.Indirect(reflect.ValueOf(q.models))
+
+	var ids []interface{}
+	var paramStrings []string
+	for i := 0; i < modelsVal.Len(); i++ {
+		modelVal := reflect.Indirect(modelsVal.Index(i))
+		modelId := modelVal.FieldByName("ID").Uint()
+		ids = append(ids, uint(modelId))
+		paramStrings = append(paramStrings, "?")
+	}
+
+	inClause := NewClause(fmt.Sprintf("in (%s)", strings.Join(paramStrings, ",")), ids...)
+
+	q.addAll(NewClause("where id"), inClause)
+
+	stmt, err := tx.Prepare(q.str)
+	defer stmt.Close()
+	if err != nil {
+		return fmt.Errorf("failed to prepare statement: %w", err)
+	}
+
+	res, err := stmt.Exec(ids...)
+	if err != nil {
+		return fmt.Errorf("failed to execute prepared statement: %w", err)
+	}
+
+	count, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get affected row count: %w", err)
+	}
+	if count != int64(len(ids)) {
+		return fmt.Errorf("expected all models to be deleted")
+	}
+
+	return nil
+}
+
 type selectCountQuery struct {
 	query
 	result *int
@@ -508,6 +555,24 @@ func (q *upsertQuery) ExecTx(tx *sql.Tx) error {
 	}
 
 	return nil
+}
+
+// Delete returns a delete query which deletes the given models from the appropriate table
+func Delete(models interface{}) (Query, error) {
+	var query deleteQuery
+
+	if !isModels(models) {
+		return &query, ErrInvalidModelsArg
+	}
+
+	if !modelsTypeHasID(models) {
+		return &query, ErrMissingIdField
+	}
+
+	query.str = fmt.Sprintf("delete from %s", modelsTable(models))
+	query.models = models
+
+	return &query, nil
 }
 
 // SelectCountFrom returns a select query which fetches the number of records in the given table and assigns the result to the given reference, subject to the given query clauses
