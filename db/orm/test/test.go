@@ -56,6 +56,7 @@ createDB:
 	assert.NoError(t, err)
 
 	CreateModelsTable(t, db)
+	CreateManagedFieldsModelsTable(t, db)
 
 	return db
 }

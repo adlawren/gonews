@@ -309,7 +309,6 @@ func TestSaveSetsID(t *testing.T) {
 
 func TestSaveSetsCreatedAtIfPresent(t *testing.T) {
 	db := test.InitDB(t)
-	test.CreateManagedFieldsModelsTable(t, db)
 
 	client := New(db)
 
@@ -327,7 +326,6 @@ func TestSaveSetsCreatedAtIfPresent(t *testing.T) {
 
 func TestSaveUpdatesUpdatedAtIfPresent(t *testing.T) {
 	db := test.InitDB(t)
-	test.CreateManagedFieldsModelsTable(t, db)
 
 	client := New(db)
 
