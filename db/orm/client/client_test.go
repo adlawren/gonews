@@ -142,7 +142,7 @@ func TestFind(t *testing.T) {
 	var matchingModel test.Model
 	err = client.Find(
 		&matchingModel,
-		clause.New("where string = ?", "abc"))
+		clause.Where("string = ?", "abc"))
 	assert.NoError(t, err)
 
 	test.AssertModelsEqual(t, &model, &matchingModel)
@@ -181,7 +181,7 @@ func TestFindReturnsErrorIfModelNotFound(t *testing.T) {
 	var matchingModel test.Model
 	err := client.Find(
 		&matchingModel,
-		clause.New("where string = ?", "abc"))
+		clause.Where("string = ?", "abc"))
 	assert.True(t, errors.Is(err, query.ErrModelNotFound))
 }
 
@@ -207,7 +207,7 @@ func TestFindAll(t *testing.T) {
 	var matchingModels []*test.Model
 	err = client.FindAll(
 		&matchingModels,
-		clause.New("where string = ?", "abc"))
+		clause.Where("string = ?", "abc"))
 	assert.NoError(t, err)
 
 	assert.Len(t, matchingModels, 1)
@@ -286,7 +286,7 @@ func TestSaveUpdatesExistingModel(t *testing.T) {
 	var matchingModel test.Model
 	err = client.Find(
 		&matchingModel,
-		clause.New("where string = ?", "def"))
+		clause.Where("string = ?", "def"))
 	assert.NoError(t, err)
 
 	test.AssertModelsEqual(t, &model, &matchingModel)

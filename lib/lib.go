@@ -25,7 +25,7 @@ func InsertMissingFeeds(cfg *config.Config, db db.DB) error {
 		}
 
 		var existingFeed feed.Feed
-		err := db.Find(&existingFeed, clause.New("where url = ?", f.URL))
+		err := db.Find(&existingFeed, clause.Where("url = ?", f.URL))
 		if err != nil && !errors.Is(err, query.ErrModelNotFound) {
 			return fmt.Errorf("failed to get matching feed: %w", err)
 		}
@@ -44,7 +44,7 @@ func InsertMissingFeeds(cfg *config.Config, db db.DB) error {
 			}
 
 			var existingTag feed.Tag
-			err = db.Find(&existingTag, clause.New("where name = ?", t.Name))
+			err = db.Find(&existingTag, clause.Where("name = ?", t.Name))
 			if err != nil && !errors.Is(err, query.ErrModelNotFound) {
 				return fmt.Errorf("failed to get matching tag: %w", err)
 			}
@@ -87,7 +87,7 @@ func fetchFeeds(db db.DB, p parser.Parser) error {
 			// Don't insert item if there's an existing item with
 			// the same author, title & link
 			var existingItem feed.Item
-			err = db.Find(&existingItem, clause.New("where link = ?", item.Link))
+			err = db.Find(&existingItem, clause.Where("link = ?", item.Link))
 			if err != nil && !errors.Is(err, query.ErrModelNotFound) {
 				return fmt.Errorf("failed to get matching item: %w", err)
 			} else if err == nil {
@@ -126,7 +126,7 @@ func WatchFeeds(ctx context.Context, cfg *config.Config, dbCfg *config.DBConfig)
 
 	fetchPeriod := cfg.FetchPeriod
 	var lastFetched timestamp.Timestamp
-	err = db.Find(&lastFetched, clause.New("where name = 'feeds_fetched_at'"))
+	err = db.Find(&lastFetched, clause.Where("name = 'feeds_fetched_at'"))
 	if errors.Is(err, query.ErrModelNotFound) {
 		lastFetched = timestamp.Timestamp{Name: "feeds_fetched_at"}
 
@@ -172,7 +172,7 @@ func AutoDismissItems(ctx context.Context, cfg *config.Config, dbCfg *config.DBC
 
 	autoDismissPeriod := cfg.AutoDismissPeriod
 	var lastAutoDismissed timestamp.Timestamp
-	err = db.Find(&lastAutoDismissed, clause.New("where name = 'auto_dismissed_at'"))
+	err = db.Find(&lastAutoDismissed, clause.Where("name = 'auto_dismissed_at'"))
 	if errors.Is(err, query.ErrModelNotFound) {
 		lastAutoDismissed = timestamp.Timestamp{Name: "auto_dismissed_at"}
 	} else if err != nil {
@@ -193,13 +193,13 @@ func AutoDismissItems(ctx context.Context, cfg *config.Config, dbCfg *config.DBC
 
 		for _, feedCfg := range cfg.Feeds {
 			var f feed.Feed
-			err = db.Find(&f, clause.New("where url = ?", feedCfg.URL))
+			err = db.Find(&f, clause.Where("url = ?", feedCfg.URL))
 			if err != nil {
 				return fmt.Errorf("failed to get matching feed: %w", err)
 			}
 
 			var items []*feed.Item
-			err = db.FindAll(&items, clause.New("where feed_id = ?", f.ID))
+			err = db.FindAll(&items, clause.Where("feed_id = ?", f.ID))
 			if err != nil {
 				return fmt.Errorf("failed to get items from feed: %w", err)
 			}

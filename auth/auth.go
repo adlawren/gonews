@@ -13,7 +13,7 @@ import (
 
 func IsValid(username, password string, db db.DB) (bool, error) {
 	var user user.User
-	err := db.Find(&user, clause.New("where username = ?", username))
+	err := db.Find(&user, clause.Where("username = ?", username))
 	if errors.Is(err, query.ErrModelNotFound) {
 		return false, nil
 	} else if err != nil {
