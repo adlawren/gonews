@@ -1,13 +1,10 @@
 package client
 
 import (
-	"database/sql"
 	"errors"
-	"fmt"
 	"gonews/db/orm/query"
 	"gonews/db/orm/query/clause"
-	"os"
-	"path/filepath"
+	"gonews/db/orm/test"
 	"testing"
 	"time"
 
@@ -15,79 +12,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type Model struct {
-	ID     uint
-	Bool   bool
-	String string
-}
-
-type IdMissingModel struct {
-	Bool   bool
-	String string
-}
-
-type ManagedFieldsModel struct {
-	ID        uint
-	Bool      bool
-	String    string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
-
-func initDB(t *testing.T) *sql.DB {
-	path := fmt.Sprintf(
-		"/tmp/gonews/test/%d/db.sqlite3",
-		time.Now().UnixNano())
-	fmt.Printf("Initializing test DB: %s\n", path)
-
-	_, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		goto createDB
-	}
-
-	assert.NoError(t, err)
-
-createDB:
-	err = os.MkdirAll(filepath.Dir(path), os.ModeDir)
-	assert.NoError(t, err)
-
-	_, err = os.Create(path)
-	assert.NoError(t, err)
-
-	dsn := fmt.Sprintf("file:%s", path)
-
-	db, err := sql.Open("sqlite3", dsn)
-	assert.NoError(t, err)
-
-	createModelsTable(t, db)
-
-	return db
-}
-
-func createModelsTable(t *testing.T, db *sql.DB) {
-	_, err := db.Exec("CREATE TABLE IF NOT EXISTS \"models\" (\"id\" integer primary key autoincrement,\"bool\" bool,\"string\" varchar(255));")
-	assert.NoError(t, err)
-}
-
-func createManagedFieldsModelsTable(t *testing.T, db *sql.DB) {
-	_, err := db.Exec("CREATE TABLE IF NOT EXISTS \"managed_fields_models\" (\"id\" integer primary key autoincrement,\"bool\" bool,\"string\" varchar(255),\"created_at\" datetime, \"updated_at\" datetime);")
-	assert.NoError(t, err)
-}
-
-func assertModelsEqual(t *testing.T, m1, m2 *Model) {
-	assert.Equal(t, m1.Bool, m2.Bool)
-	assert.Equal(t, m1.String, m2.String)
-}
-
 func TestAll(t *testing.T) {
-	db := initDB(t)
+	db := test.InitDB(t)
 	client := New(db)
 
-	model1 := Model{
+	model1 := test.Model{
 		Bool:   true,
 		String: "abc",
 	}
-	model2 := Model{
+	model2 := test.Model{
 		Bool:   true,
 		String: "def",
 	}
@@ -98,20 +31,20 @@ func TestAll(t *testing.T) {
 	err = client.Save(&model2)
 	assert.NoError(t, err)
 
-	var matchingModels []*Model
+	var matchingModels []*test.Model
 	err = client.All(&matchingModels)
 	assert.NoError(t, err)
 
 	assert.Len(t, matchingModels, 2)
-	assertModelsEqual(t, &model1, matchingModels[0])
-	assertModelsEqual(t, &model2, matchingModels[1])
+	test.AssertModelsEqual(t, &model1, matchingModels[0])
+	test.AssertModelsEqual(t, &model2, matchingModels[1])
 }
 
 func TestAllReturnsErrorIfArgumentInvalid(t *testing.T) {
-	db := initDB(t)
+	db := test.InitDB(t)
 	client := New(db)
 
-	var model Model
+	var model test.Model
 	err := client.All(&model)
 	assert.True(t, errors.Is(err, query.ErrInvalidModelsArg))
 
@@ -125,27 +58,27 @@ func TestAllReturnsErrorIfArgumentInvalid(t *testing.T) {
 }
 
 func TestAllReturnsErrorIfIdIsMissing(t *testing.T) {
-	db := initDB(t)
+	db := test.InitDB(t)
 	client := New(db)
 
-	var models []*IdMissingModel
+	var models []*test.IdMissingModel
 	err := client.All(&models)
 	assert.True(t, errors.Is(err, query.ErrMissingIdField))
 }
 
 func TestDeleteAll(t *testing.T) {
-	db := initDB(t)
+	db := test.InitDB(t)
 	client := New(db)
 
-	model1 := Model{
+	model1 := test.Model{
 		Bool:   true,
 		String: "abc",
 	}
-	model2 := Model{
+	model2 := test.Model{
 		Bool:   true,
 		String: "def",
 	}
-	model3 := Model{
+	model3 := test.Model{
 		Bool:   true,
 		String: "ghi",
 	}
@@ -159,20 +92,20 @@ func TestDeleteAll(t *testing.T) {
 	err = client.Save(&model3)
 	assert.NoError(t, err)
 
-	err = client.DeleteAll(&[]*Model{&model1, &model2})
+	err = client.DeleteAll(&[]*test.Model{&model1, &model2})
 	assert.NoError(t, err)
 
-	var models []*Model
+	var models []*test.Model
 	err = client.All(&models)
 	assert.Len(t, models, 1)
-	assertModelsEqual(t, &model3, models[0])
+	test.AssertModelsEqual(t, &model3, models[0])
 }
 
 func TestDeleteAllReturnsErrorIfArgumentInvalid(t *testing.T) {
-	db := initDB(t)
+	db := test.InitDB(t)
 	client := New(db)
 
-	var model Model
+	var model test.Model
 	err := client.DeleteAll(&model)
 	assert.True(t, errors.Is(err, query.ErrInvalidModelsArg))
 
@@ -186,19 +119,19 @@ func TestDeleteAllReturnsErrorIfArgumentInvalid(t *testing.T) {
 }
 
 func TestDeleteAllReturnsErrorIfIdIsMissing(t *testing.T) {
-	db := initDB(t)
+	db := test.InitDB(t)
 	client := New(db)
 
-	var models []*IdMissingModel
+	var models []*test.IdMissingModel
 	err := client.DeleteAll(&models)
 	assert.True(t, errors.Is(err, query.ErrMissingIdField))
 }
 
 func TestFind(t *testing.T) {
-	db := initDB(t)
+	db := test.InitDB(t)
 	client := New(db)
 
-	model := Model{
+	model := test.Model{
 		Bool:   true,
 		String: "abc",
 	}
@@ -206,20 +139,20 @@ func TestFind(t *testing.T) {
 	err := client.Save(&model)
 	assert.NoError(t, err)
 
-	var matchingModel Model
+	var matchingModel test.Model
 	err = client.Find(
 		&matchingModel,
 		clause.New("where string = ?", "abc"))
 	assert.NoError(t, err)
 
-	assertModelsEqual(t, &model, &matchingModel)
+	test.AssertModelsEqual(t, &model, &matchingModel)
 }
 
 func TestFindReturnsErrorIfArgumentInvalid(t *testing.T) {
-	db := initDB(t)
+	db := test.InitDB(t)
 	client := New(db)
 
-	var models []*Model
+	var models []*test.Model
 	err := client.Find(&models)
 	assert.True(t, errors.Is(err, query.ErrInvalidModelArg))
 
@@ -233,19 +166,19 @@ func TestFindReturnsErrorIfArgumentInvalid(t *testing.T) {
 }
 
 func TestFindReturnsErrorIfIdIsMissing(t *testing.T) {
-	db := initDB(t)
+	db := test.InitDB(t)
 	client := New(db)
 
-	var model IdMissingModel
+	var model test.IdMissingModel
 	err := client.Find(&model)
 	assert.True(t, errors.Is(err, query.ErrMissingIdField))
 }
 
 func TestFindReturnsErrorIfModelNotFound(t *testing.T) {
-	db := initDB(t)
+	db := test.InitDB(t)
 	client := New(db)
 
-	var matchingModel Model
+	var matchingModel test.Model
 	err := client.Find(
 		&matchingModel,
 		clause.New("where string = ?", "abc"))
@@ -253,14 +186,14 @@ func TestFindReturnsErrorIfModelNotFound(t *testing.T) {
 }
 
 func TestFindAll(t *testing.T) {
-	db := initDB(t)
+	db := test.InitDB(t)
 	client := New(db)
 
-	model1 := Model{
+	model1 := test.Model{
 		Bool:   true,
 		String: "abc",
 	}
-	model2 := Model{
+	model2 := test.Model{
 		Bool:   true,
 		String: "def",
 	}
@@ -271,21 +204,21 @@ func TestFindAll(t *testing.T) {
 	err = client.Save(&model2)
 	assert.NoError(t, err)
 
-	var matchingModels []*Model
+	var matchingModels []*test.Model
 	err = client.FindAll(
 		&matchingModels,
 		clause.New("where string = ?", "abc"))
 	assert.NoError(t, err)
 
 	assert.Len(t, matchingModels, 1)
-	assertModelsEqual(t, &model1, matchingModels[0])
+	test.AssertModelsEqual(t, &model1, matchingModels[0])
 }
 
 func TestFindAllReturnsErrorIfArgumentInvalid(t *testing.T) {
-	db := initDB(t)
+	db := test.InitDB(t)
 	client := New(db)
 
-	var model Model
+	var model test.Model
 	err := client.FindAll(&model)
 	assert.True(t, errors.Is(err, query.ErrInvalidModelsArg))
 
@@ -299,19 +232,19 @@ func TestFindAllReturnsErrorIfArgumentInvalid(t *testing.T) {
 }
 
 func TestFindAllReturnsErrorIfIdIsMissing(t *testing.T) {
-	db := initDB(t)
+	db := test.InitDB(t)
 	client := New(db)
 
-	var models []*IdMissingModel
+	var models []*test.IdMissingModel
 	err := client.FindAll(&models)
 	assert.True(t, errors.Is(err, query.ErrMissingIdField))
 }
 
 func TestSaveReturnsErrorIfArgumentInvalid(t *testing.T) {
-	db := initDB(t)
+	db := test.InitDB(t)
 	client := New(db)
 
-	var models []*Model
+	var models []*test.Model
 	err := client.Save(&models)
 	assert.True(t, errors.Is(err, query.ErrInvalidModelArg))
 
@@ -325,19 +258,19 @@ func TestSaveReturnsErrorIfArgumentInvalid(t *testing.T) {
 }
 
 func TestSaveReturnsErrorIfIdIsMissing(t *testing.T) {
-	db := initDB(t)
+	db := test.InitDB(t)
 	client := New(db)
 
-	var model IdMissingModel
+	var model test.IdMissingModel
 	err := client.Save(&model)
 	assert.True(t, errors.Is(err, query.ErrMissingIdField))
 }
 
 func TestSaveUpdatesExistingModel(t *testing.T) {
-	db := initDB(t)
+	db := test.InitDB(t)
 	client := New(db)
 
-	model := Model{
+	model := test.Model{
 		Bool:   true,
 		String: "abc",
 	}
@@ -350,20 +283,20 @@ func TestSaveUpdatesExistingModel(t *testing.T) {
 	err = client.Save(&model)
 	assert.NoError(t, err)
 
-	var matchingModel Model
+	var matchingModel test.Model
 	err = client.Find(
 		&matchingModel,
 		clause.New("where string = ?", "def"))
 	assert.NoError(t, err)
 
-	assertModelsEqual(t, &model, &matchingModel)
+	test.AssertModelsEqual(t, &model, &matchingModel)
 }
 
 func TestSaveSetsID(t *testing.T) {
-	db := initDB(t)
+	db := test.InitDB(t)
 	client := New(db)
 
-	model := Model{
+	model := test.Model{
 		Bool:   true,
 		String: "abc",
 	}
@@ -375,12 +308,12 @@ func TestSaveSetsID(t *testing.T) {
 }
 
 func TestSaveSetsCreatedAtIfPresent(t *testing.T) {
-	db := initDB(t)
-	createManagedFieldsModelsTable(t, db)
+	db := test.InitDB(t)
+	test.CreateManagedFieldsModelsTable(t, db)
 
 	client := New(db)
 
-	model := ManagedFieldsModel{
+	model := test.ManagedFieldsModel{
 		Bool:   true,
 		String: "abc",
 	}
@@ -393,12 +326,12 @@ func TestSaveSetsCreatedAtIfPresent(t *testing.T) {
 }
 
 func TestSaveUpdatesUpdatedAtIfPresent(t *testing.T) {
-	db := initDB(t)
-	createManagedFieldsModelsTable(t, db)
+	db := test.InitDB(t)
+	test.CreateManagedFieldsModelsTable(t, db)
 
 	client := New(db)
 
-	model := ManagedFieldsModel{
+	model := test.ManagedFieldsModel{
 		Bool:   true,
 		String: "abc",
 	}
