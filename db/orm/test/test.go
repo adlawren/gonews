@@ -17,6 +17,12 @@ type Model struct {
 	String string
 }
 
+type SecondaryModel struct {
+	ID      uint
+	ModelID uint
+	String  string
+}
+
 type IdMissingModel struct {
 	Bool   bool
 	String string
@@ -57,6 +63,7 @@ createDB:
 
 	CreateModelsTable(t, db)
 	CreateManagedFieldsModelsTable(t, db)
+	CreateSecondaryModelsTable(t, db)
 
 	return db
 }
@@ -68,6 +75,11 @@ func CreateModelsTable(t *testing.T, db *sql.DB) {
 
 func CreateManagedFieldsModelsTable(t *testing.T, db *sql.DB) {
 	_, err := db.Exec("CREATE TABLE IF NOT EXISTS \"managed_fields_models\" (\"id\" integer primary key autoincrement,\"bool\" bool,\"string\" varchar(255),\"created_at\" datetime, \"updated_at\" datetime);")
+	assert.NoError(t, err)
+}
+
+func CreateSecondaryModelsTable(t *testing.T, db *sql.DB) {
+	_, err := db.Exec("CREATE TABLE IF NOT EXISTS \"secondary_models\" (\"id\" integer primary key autoincrement,\"model_id\" integer,\"string\" varchar(255))")
 	assert.NoError(t, err)
 }
 

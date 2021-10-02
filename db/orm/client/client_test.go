@@ -347,3 +347,269 @@ func TestSaveUpdatesUpdatedAtIfPresent(t *testing.T) {
 
 	assert.True(t, model.UpdatedAt.After(previousUpdatedAt))
 }
+
+//// Clause tests
+
+func TestGroupByClause(t *testing.T) {
+	db := test.InitDB(t)
+	client := New(db)
+
+	model1 := test.Model{
+		Bool:   true,
+		String: "abc",
+	}
+	err := client.Save(&model1)
+	assert.NoError(t, err)
+
+	model2 := test.Model{
+		Bool:   true,
+		String: "def",
+	}
+	err = client.Save(&model2)
+	assert.NoError(t, err)
+
+	model3 := test.Model{
+		Bool:   true,
+		String: "abc",
+	}
+	err = client.Save(&model3)
+	assert.NoError(t, err)
+
+	var matchingModels []*test.Model
+	err = client.FindAll(
+		&matchingModels,
+		clause.GroupBy("string"))
+	assert.NoError(t, err)
+
+	assert.Len(t, matchingModels, 2)
+	test.AssertModelsEqual(t, &model1, matchingModels[0])
+	test.AssertModelsEqual(t, &model2, matchingModels[1])
+}
+
+func TestInClause(t *testing.T) {
+	db := test.InitDB(t)
+	client := New(db)
+
+	model1 := test.Model{
+		Bool:   true,
+		String: "abc",
+	}
+	err := client.Save(&model1)
+	assert.NoError(t, err)
+
+	model2 := test.Model{
+		Bool:   true,
+		String: "def",
+	}
+	err = client.Save(&model2)
+	assert.NoError(t, err)
+
+	var matchingModels []*test.Model
+	err = client.FindAll(
+		&matchingModels,
+		clause.Where("id"),
+		clause.In(model1.ID, model2.ID))
+	assert.NoError(t, err)
+
+	assert.Len(t, matchingModels, 2)
+	test.AssertModelsEqual(t, &model1, matchingModels[0])
+	test.AssertModelsEqual(t, &model2, matchingModels[1])
+}
+
+func TestInnerJoinClause(t *testing.T) {
+	db := test.InitDB(t)
+	client := New(db)
+
+	model1 := test.Model{
+		Bool:   true,
+		String: "abc",
+	}
+	err := client.Save(&model1)
+	assert.NoError(t, err)
+
+	model2 := test.Model{
+		Bool:   true,
+		String: "def",
+	}
+	err = client.Save(&model2)
+	assert.NoError(t, err)
+
+	secondaryModel1 := test.SecondaryModel{
+		ModelID: model1.ID,
+		String:  "abc",
+	}
+	err = client.Save(&secondaryModel1)
+	assert.NoError(t, err)
+
+	secondaryModel2 := test.SecondaryModel{
+		ModelID: model1.ID,
+		String:  "def",
+	}
+	err = client.Save(&secondaryModel2)
+	assert.NoError(t, err)
+
+	var matchingModels []*test.Model
+	err = client.FindAll(
+		&matchingModels,
+		clause.InnerJoin("secondary_models on models.id = secondary_models.model_id"))
+	assert.NoError(t, err)
+
+	assert.Len(t, matchingModels, 2)
+	test.AssertModelsEqual(t, &model1, matchingModels[0])
+	test.AssertModelsEqual(t, &model1, matchingModels[1])
+}
+
+func TestLeftJoinClause(t *testing.T) {
+	db := test.InitDB(t)
+	client := New(db)
+
+	model1 := test.Model{
+		Bool:   true,
+		String: "abc",
+	}
+	err := client.Save(&model1)
+	assert.NoError(t, err)
+
+	model2 := test.Model{
+		Bool:   true,
+		String: "def",
+	}
+	err = client.Save(&model2)
+	assert.NoError(t, err)
+
+	secondaryModel1 := test.SecondaryModel{
+		ModelID: model1.ID,
+		String:  "abc",
+	}
+	err = client.Save(&secondaryModel1)
+	assert.NoError(t, err)
+
+	secondaryModel2 := test.SecondaryModel{
+		ModelID: model1.ID,
+		String:  "def",
+	}
+	err = client.Save(&secondaryModel2)
+	assert.NoError(t, err)
+
+	var matchingModels []*test.Model
+	err = client.FindAll(
+		&matchingModels,
+		clause.LeftJoin("secondary_models on models.id = secondary_models.model_id"))
+	assert.NoError(t, err)
+
+	assert.Len(t, matchingModels, 3)
+	test.AssertModelsEqual(t, &model1, matchingModels[0])
+	test.AssertModelsEqual(t, &model1, matchingModels[1])
+	test.AssertModelsEqual(t, &model2, matchingModels[2])
+}
+
+func TestLimitClause(t *testing.T) {
+	db := test.InitDB(t)
+	client := New(db)
+
+	model1 := test.Model{
+		Bool:   true,
+		String: "abc",
+	}
+	err := client.Save(&model1)
+	assert.NoError(t, err)
+
+	model2 := test.Model{
+		Bool:   true,
+		String: "def",
+	}
+	err = client.Save(&model2)
+	assert.NoError(t, err)
+
+	var matchingModels []*test.Model
+	err = client.FindAll(
+		&matchingModels,
+		clause.Limit(1))
+	assert.NoError(t, err)
+
+	assert.Len(t, matchingModels, 1)
+	test.AssertModelsEqual(t, &model1, matchingModels[0])
+}
+
+func TestOrderByClause(t *testing.T) {
+	db := test.InitDB(t)
+	client := New(db)
+
+	model1 := test.Model{
+		Bool:   true,
+		String: "abc",
+	}
+	err := client.Save(&model1)
+	assert.NoError(t, err)
+
+	model2 := test.Model{
+		Bool:   true,
+		String: "def",
+	}
+	err = client.Save(&model2)
+	assert.NoError(t, err)
+
+	var matchingModels []*test.Model
+	err = client.FindAll(
+		&matchingModels,
+		clause.OrderBy("string desc"))
+	assert.NoError(t, err)
+
+	assert.Len(t, matchingModels, 2)
+	test.AssertModelsEqual(t, &model2, matchingModels[0])
+	test.AssertModelsEqual(t, &model1, matchingModels[1])
+}
+
+func TestSelectClause(t *testing.T) {
+	db := test.InitDB(t)
+	client := New(db)
+
+	model := test.Model{
+		Bool:   true,
+		String: "abc",
+	}
+	err := client.Save(&model)
+	assert.NoError(t, err)
+
+	var matchingModel test.Model
+	err = client.Find(
+		&matchingModel,
+		clause.Where("id"),
+		clause.In(),
+		clause.Select("id from models").Wrap())
+	assert.NoError(t, err)
+
+	test.AssertModelsEqual(t, &model, &matchingModel)
+}
+
+func TestUnionClause(t *testing.T) {
+	db := test.InitDB(t)
+	client := New(db)
+
+	model1 := test.Model{
+		Bool:   true,
+		String: "abc",
+	}
+	err := client.Save(&model1)
+	assert.NoError(t, err)
+
+	model2 := test.Model{
+		Bool:   true,
+		String: "abc",
+	}
+	err = client.Save(&model2)
+	assert.NoError(t, err)
+
+	var matchingModels []*test.Model
+	err = client.FindAll(
+		&matchingModels,
+		clause.Union("all"),
+		clause.Select("* from models"))
+	assert.NoError(t, err)
+
+	assert.Len(t, matchingModels, 4)
+	test.AssertModelsEqual(t, &model1, matchingModels[0])
+	test.AssertModelsEqual(t, &model2, matchingModels[1])
+	test.AssertModelsEqual(t, &model1, matchingModels[2])
+	test.AssertModelsEqual(t, &model2, matchingModels[3])
+}
