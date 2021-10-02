@@ -585,7 +585,18 @@ func Select(results interface{}, clauses ...*clause.Clause) (Query, error) {
 		return &query, ErrMissingIdField
 	}
 
-	query.str = fmt.Sprintf("select * from %s", modelsTable(results))
+	modelsType := modelsType(results)
+	tableName := modelsTable(results)
+
+	snakeFieldNames := []string{}
+	for idx := 0; idx < modelsType.NumField(); idx++ {
+		snakeFieldNames = append(
+			snakeFieldNames,
+			fmt.Sprintf("%s.%s", tableName, toSnake(modelsType.Field(idx).Name)))
+	}
+
+	query.str = fmt.Sprintf("select %s from %s", strings.Join(snakeFieldNames, ","), tableName)
+
 	query.results = results
 	query.addAll(clauses...)
 
@@ -604,7 +615,17 @@ func SelectOne(result interface{}, clauses ...*clause.Clause) (Query, error) {
 		return &query, ErrMissingIdField
 	}
 
-	query.str = fmt.Sprintf("select * from %s", modelTable(result))
+	modelType := modelType(result)
+	tableName := modelTable(result)
+
+	snakeFieldNames := []string{}
+	for idx := 0; idx < modelType.NumField(); idx++ {
+		snakeFieldNames = append(
+			snakeFieldNames,
+			fmt.Sprintf("%s.%s", tableName, toSnake(modelType.Field(idx).Name)))
+	}
+
+	query.str = fmt.Sprintf("select %s from %s", strings.Join(snakeFieldNames, ","), tableName)
 	query.result = result
 	query.addAll(clauses...)
 
