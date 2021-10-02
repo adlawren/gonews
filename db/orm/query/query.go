@@ -181,9 +181,7 @@ func (q *deleteQuery) ExecTx(tx *sql.Tx) error {
 		paramStrings = append(paramStrings, "?")
 	}
 
-	inClause := clause.New(fmt.Sprintf("in (%s)", strings.Join(paramStrings, ",")), ids...)
-
-	q.addAll(clause.New("where id"), inClause)
+	q.addAll(clause.Where("id"), clause.In(ids...))
 
 	stmt, err := tx.Prepare(q.str)
 	defer stmt.Close()
@@ -518,7 +516,7 @@ func (q *upsertQuery) Exec(db *sql.DB) error {
 func (q *upsertQuery) ExecTx(tx *sql.Tx) error {
 	var count int
 	modelVal := reflect.Indirect(reflect.ValueOf(q.model))
-	selectCountFromQuery := SelectCountFrom(modelTable(q.model), &count, clause.New("where id = ?", modelVal.FieldByName("ID").Interface()))
+	selectCountFromQuery := SelectCountFrom(modelTable(q.model), &count, clause.Where("id = ?", modelVal.FieldByName("ID").Interface()))
 
 	err := selectCountFromQuery.ExecTx(tx)
 	if err != nil {
